@@ -1,0 +1,24 @@
+{
+  "name": "@openmcp/contracts",
+  "version": "0.1.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc",
+    "test": "vitest run",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@openmcp/eslint-config": "workspace:*",
+    "@openmcp/typescript-config": "workspace:*",
+    "@openmcp/vitest-config": "workspace:*",
+    "eslint": "^10.13.0",
+    "typescript": "~6.0.3",
+    "vitest": "^5.0.5"
+  }
+}
