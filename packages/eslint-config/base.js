@@ -4,7 +4,7 @@ import tseslint from "typescript-eslint";
 import js from "@eslint/js";
 
 export default defineConfig(
-  globalIgnores(["out/", "dist/", "drizzle/"]),
+  globalIgnores(["out/", "dist/", "migrations/"]),
   js.configs.recommended,
   tseslint.configs.recommended,
   prettier,
