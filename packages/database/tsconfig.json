@@ -1,0 +1,7 @@
+{
+  "extends": "@openmcp/typescript-config/base.json",
+  "compilerOptions": {
+    "types": ["node"]
+  },
+  "include": ["src", "tests", "drizzle.config.ts"]
+}

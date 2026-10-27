@@ -1,0 +1,28 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build Outputs
+out/
+dist/
+build/
+
+# Testing
+.vitest/
+coverage/
+
+# Environment Files
+.env*
+!.env.example
+
+# Turbo
+.turbo/
+
+# Debug
+*.log
+
+# Misc
+.DS_Store
+*.pem
