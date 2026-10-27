@@ -37,6 +37,6 @@ jobs:
       - if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y gnome-keyring dbus-x11
       - if: runner.os == 'Linux'
-        run: dbus-run-session -- sh -c "echo '' | gnome-kering-daemon --unlock; pnpm test"
+        run: dbus-run-session -- sh -c "echo '' | gnome-keyring-daemon --unlock; pnpm test"
       - if: runner.os != 'Linux'
         run: pnpm test
