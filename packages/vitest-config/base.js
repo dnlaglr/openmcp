@@ -5,5 +5,6 @@ export default defineConfig({
     restoreMocks: true,
     unstubEnvs: true,
     unstubGlobals: true,
-  },
+    passWithNoTests: true
+  }
 });
