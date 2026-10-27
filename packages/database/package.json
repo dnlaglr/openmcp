@@ -1,0 +1,27 @@
+{
+  "name": "@openmcp/database",
+  "version": "0.1.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "db:generate": "drizzle-kit generate",
+    "typecheck": "tsc",
+    "test": "vitest run",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "drizzle-orm": "1.0.0-rc.5"
+  },
+  "devDependencies": {
+    "@openmcp/eslint-config": "workspace:*",
+    "@openmcp/typescript-config": "workspace:*",
+    "@openmcp/vitest-config": "workspace:*",
+    "@types/node": "^24.19.2",
+    "drizzle-kit": "1.0.0-rc.5",
+    "eslint": "^10.13.0",
+    "typescript": "~6.0.3",
+    "vitest": "^5.0.5"
+  }
+}
