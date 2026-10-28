@@ -10,6 +10,8 @@
     },
     "typecheck": {},
     "test": {},
+    "test:unit": {},
+    "test:e2e": {},
     "lint": {},
     "package": {
       "dependsOn": ["build"],

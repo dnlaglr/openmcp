@@ -10,6 +10,8 @@
     "postinstall": "install-electron",
     "typecheck": "tsc -p tsconfig.node.json && tsc -p tsconfig.web.json",
     "test": "vitest run",
+    "test:unit": "vitest run --project unit",
+    "test:e2e": "vitest run --project e2e",
     "lint": "eslint ."
   },
   "dependencies": {

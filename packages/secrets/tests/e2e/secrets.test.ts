@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { expect, test } from "vitest";
 
-import { deleteSecret, getSecret, setSecret } from "../src";
+import { deleteSecret, getSecret, setSecret } from "../../src";
 
 test("successfully round-trips a secret through the OS keyring", () => {
   const key = `test-${randomUUID()}`;
