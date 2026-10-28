@@ -10,7 +10,7 @@ export const Transport = z.enum(["stdio", "http", "sse"]);
 export type Transport = z.infer<typeof Transport>;
 
 const StringMap = z.record(z.string(), z.string());
-const EnvMap = z.record(EnvName, z.string());
+const EnvMap = z.record(EnvName, z.string(), { error: "Variable names use letters, numbers or _, and can't start with a number" });
 
 export const StdioServer = z.object({
   type: z.literal("stdio"),
@@ -54,7 +54,7 @@ export type InstalledServer = z.infer<typeof InstalledServer>;
 
 export const NewCustomServer = z.object({
   name: ServerName,
-  command: z.string().trim().min(1),
+  command: z.string().trim().min(1, "Enter a command"),
   args: z.array(z.string()).default([]),
   env: EnvMap.default({}),
   secrets: EnvMap.default({}),
