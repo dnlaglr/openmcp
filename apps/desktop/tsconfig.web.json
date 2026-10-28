@@ -1,0 +1,8 @@
+{
+  "extends": "@openmcp/typescript-config/react.json",
+  "compilerOptions": {
+    "types": ["vite/client"],
+    "paths": { "@/*": ["./src/renderer/src/*"] }
+  },
+  "include": ["src/renderer/src"]
+}
