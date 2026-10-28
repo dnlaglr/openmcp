@@ -1,0 +1,39 @@
+appId: dev.openmcp.desktop
+productName: OpenMCP
+directories:
+  output: dist
+files:
+  - dist/{main,preload,renderer}/**
+  - "!node_modules/@napi-rs/keyring-*/**"
+  - node_modules/@napi-rs/keyring-${platform}-${arch}*/**
+extraResources:
+  - from: ../../packages/database/migrations
+    to: migrations
+npmRebuild: false
+electronFuses:
+  runAsNode: true
+  enableCookieEncryption: true
+  enableNodeOptionsEnvironmentVariable: false
+  enableNodeCliInspectArguments: false
+  enableEmbeddedAsarIntegrityValidation: true
+  onlyLoadAppFromAsar: true
+
+win:
+  target: nsis
+mac:
+  category: public.app-category.developer-tools
+  target:
+    - target: dmg
+      arch: [x64, arm64]
+    - target: zip
+      arch: [x64, arm64]
+linux:
+  category: Development
+  maintainer: dnlaglr <dnlaglr@users.noreply.github.com>
+  target: [AppImage, deb]
+
+publish:
+  provider: github
+  owner: dnlaglr
+  repo: openmcp
+  releaseType: draft
