@@ -41,7 +41,7 @@ if (!app.requestSingleInstanceLock()) {
 
   void app.whenReady().then(async () => {
     session.defaultSession.setPermissionRequestHandler((_webContents, permission, callback) => callback(ALLOWED_PERMISSIONS.has(permission)));
-    
+
     const db = openDatabase();
     app.on("will-quit", () => db.$client.close());
 
