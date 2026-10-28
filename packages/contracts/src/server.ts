@@ -23,3 +23,11 @@ export const RemoteServer = z.object({
 
 export const ServerConfig = z.discriminatedUnion("type", [ StdioServer, RemoteServer ]);
 export type ServerConfig = z.infer<typeof ServerConfig>;
+
+export const LaunchSpec = z.object({
+  command: z.string().min(1),
+  args: z.array(z.string()).default([]),
+  env: StringMap.default({}),
+  secretEnv: z.array(z.string()).default([])
+});
+export type LaunchSpec = z.infer<typeof LaunchSpec>;
