@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { CodexConfig, McpServersFile, ServerName } from "../src";
+import { CodexConfig, McpServersFile, ServerName } from "../../src";
 
 describe("contracts", () => {
   it("preserves unknown keys so writes don't drop user settings", () => {

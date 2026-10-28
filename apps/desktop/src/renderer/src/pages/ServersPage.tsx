@@ -1,12 +1,40 @@
-import { Plus } from "lucide-react";
+import { Server } from "lucide-react";
 
+import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
+import { AddServerDialog } from "./servers/AddServerDialog";
 import { PageHeader } from "@/components/PageHeader";
-import { Button } from "@/components/ui/button";
+import { ServerTable } from "./servers/ServerTable";
+import { ipcErrorMessage } from "@/lib/ipc-error";
+import { useServers } from "@/hooks/use-servers";
+
+
+function ServersContent() {
+  const { data: servers, error, isPending } = useServers();
+
+  if (isPending) return null;
+  if (error) return <p role="alert" className="text-sm text-destructive">{ipcErrorMessage(error)}</p>;
+  if (servers.length > 0) return <ServerTable servers={servers} />;
+
+  return (
+    <Empty className="border border-dashed">
+      <EmptyHeader>
+        <EmptyMedia variant="icon"><Server /></EmptyMedia>
+        <EmptyTitle>No servers yet</EmptyTitle>
+        <EmptyDescription>Add a custom server by its command, or install one from the Catalog.</EmptyDescription>
+      </EmptyHeader>
+      <EmptyContent>
+        <AddServerDialog variant="outline" />
+      </EmptyContent>
+    </Empty>
+  );
+}
+
 
 export function ServersPage() {
   return (
     <>
-      <PageHeader title="MCP Servers" description="Servers installed on this machine." actions={<Button><Plus /> Add Server</Button>} />
+      <PageHeader title="MCP Servers" description="Servers installed on this machine." actions={<AddServerDialog />} />
+      <ServersContent />
     </>
-  )
+  );
 }

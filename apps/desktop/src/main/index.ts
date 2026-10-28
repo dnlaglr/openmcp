@@ -3,6 +3,7 @@ import { app, session, type BrowserWindow } from "electron";
 import { registerHandlers } from "./handlers";
 import { createMainWindow } from "./windows";
 import { updateOnLaunch } from "./updater";
+import { openDatabase } from "./database";
 
 const ALLOWED_PERMISSIONS = new Set(["clipboard-sanitized-write"]);
 
@@ -40,7 +41,11 @@ if (!app.requestSingleInstanceLock()) {
 
   void app.whenReady().then(async () => {
     session.defaultSession.setPermissionRequestHandler((_webContents, permission, callback) => callback(ALLOWED_PERMISSIONS.has(permission)));
-    registerHandlers();
+
+    const db = openDatabase();
+    app.on("will-quit", () => db.$client.close());
+
+    registerHandlers(db);
     getMainWindow();
 
     await updateOnLaunch();
