@@ -34,8 +34,10 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y gnome-keyring dbus-x11
+        run: |
+          sudo apt-get update && sudo apt-get install -y gnome-keyring dbus-x11 xvfb
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
       - if: runner.os == 'Linux'
-        run: dbus-run-session -- sh -c "echo '' | gnome-keyring-daemon --unlock; pnpm test"
+        run: xvfb-run -a dbus-run-session -- sh -c "echo '' | gnome-keyring-daemon --unlock; pnpm test"
       - if: runner.os != 'Linux'
         run: pnpm test

@@ -6,12 +6,19 @@
       "persistent": true
     },
     "build": {
-      "dependsOn": ["^build"]
+      "dependsOn": ["^build"],
+      "outputs": ["dist/**"]
     },
     "typecheck": {},
-    "test": {},
+    "test": {
+      "dependsOn": ["build"],
+      "cache": false
+    },
     "test:unit": {},
-    "test:e2e": {},
+    "test:e2e": {
+      "dependsOn": ["build"],
+      "cache": false
+    },
     "lint": {},
     "package": {
       "dependsOn": ["build"],

@@ -10,6 +10,8 @@ dist/
 build/
 
 # Testing
+test-results/
+playwright-report/
 .vitest/
 coverage/
 
