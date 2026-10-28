@@ -18,6 +18,7 @@
     "@openmcp/eslint-config": "workspace:*",
     "@openmcp/typescript-config": "workspace:*",
     "@openmcp/vitest-config": "workspace:*",
+    "@openmcp/contracts": "workspace:*",
     "@types/node": "^24.19.2",
     "drizzle-kit": "1.0.0-rc.5",
     "eslint": "^10.13.0",

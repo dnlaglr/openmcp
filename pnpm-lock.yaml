@@ -137,6 +137,9 @@ importers:
         specifier: 1.0.0-rc.5
         version: 1.0.0-rc.5(zod@4.6.7)
     devDependencies:
+      '@openmcp/contracts':
+        specifier: workspace:*
+        version: link:../contracts
       '@openmcp/eslint-config':
         specifier: workspace:*
         version: link:../eslint-config
