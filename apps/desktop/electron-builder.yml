@@ -2,6 +2,7 @@ appId: dev.openmcp.desktop
 productName: OpenMCP
 directories:
   output: dist
+  buildResources: resources
 files:
   - dist/{main,preload,renderer}/**
   - "!node_modules/@napi-rs/keyring-*/**"

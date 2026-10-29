@@ -1,7 +1,7 @@
-import { Boxes } from "lucide-react";
 import { Fragment } from "react";
 
 import { GatewayStatus } from "@/components/GatewayStatus";
+import { Logo } from "@/components/Logo";
 import { footerTabs, tabGroups, type NavItem, type Page } from "@/lib/navigation";
 import {
   Sidebar,
@@ -40,7 +40,7 @@ export function AppSidebar(props: NavProps) {
     <Sidebar collapsible="icon">
       <SidebarHeader>
         <div className="flex h-8 items-center gap-2 px-2 font-semibold">
-          <Boxes className="size-4 shrink-0" />
+          <Logo className="size-4 shrink-0 text-primary" />
           <span className="truncate group-data-[collapsible=icon]:hidden">OpenMCP</span>
         </div>
       </SidebarHeader>

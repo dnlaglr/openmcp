@@ -1,4 +1,9 @@
-# OpenMCP
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset=".github/assets/banner-dark.png">
+    <img alt="OpenMCP" src=".github/assets/banner-light.png">
+  </picture>
+</p>
 
 **Install MCP servers once. Use them in every agent.**
 
