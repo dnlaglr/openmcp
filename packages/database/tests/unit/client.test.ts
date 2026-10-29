@@ -1,7 +1,7 @@
 import { fileURLToPath } from "node:url";
 import { beforeEach, expect, test } from "vitest";
 
-import { createDatabase, getSetting, setSetting, type Database } from "../../src";
+import { createDatabase, type Database } from "../../src";
 
 const migrationsFolder = fileURLToPath(new URL("../../migrations", import.meta.url));
 
@@ -15,12 +15,4 @@ test("applies every migration to a fresh database", () => {
 
 test("enables foreign key enforcement", () => {
   expect(db.$client.prepare("PRAGMA foreign_keys").get()).toEqual({ foreign_keys: 1 });
-});
-
-test("correctly upserts settings", () => {
-  expect(getSetting(db, "theme")).toBeNull();
-
-  setSetting(db, "theme", "dark");
-  setSetting(db, "theme", "light");
-  expect(getSetting(db, "theme")).toBe("light");
 });

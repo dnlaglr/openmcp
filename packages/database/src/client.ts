@@ -1,9 +1,6 @@
 import { migrate } from "drizzle-orm/node-sqlite/migrator";
 import { drizzle } from "drizzle-orm/node-sqlite";
 import { DatabaseSync } from "node:sqlite";
-import { eq } from "drizzle-orm";
-
-import { settings } from "./schema";
 
 
 export function createDatabase({ path, migrationsFolder }: { path: string; migrationsFolder: string; }) {
@@ -18,16 +15,3 @@ export function createDatabase({ path, migrationsFolder }: { path: string; migra
 
 
 export type Database = ReturnType<typeof createDatabase>;
-
-
-export function getSetting(db: Database, key: string): string | null {
-  return db.select().from(settings).where(eq(settings.key, key)).get()?.value ?? null;
-}
-
-
-export function setSetting(db: Database, key: string, value: string): void {
-  db.insert(settings)
-    .values({ key, value })
-    .onConflictDoUpdate({ target: settings.key, set: { value, updatedAt: new Date() } })
-    .run();
-}
