@@ -10,10 +10,10 @@
     "typecheck": "tsc"
   },
   "dependencies": {
+    "@openmcp/contracts": "workspace:*",
     "drizzle-orm": "1.0.0-rc.5"
   },
   "devDependencies": {
-    "@openmcp/contracts": "workspace:*",
     "drizzle-kit": "1.0.0-rc.5"
   }
 }

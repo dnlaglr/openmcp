@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from "electron";
 
-import { ipcEvents, type Api, type UpdaterApi, type UpdateStatus } from "@openmcp/contracts";
+import { ipcEvents, updaterChannels, type Api, type UpdaterApi, type UpdateStatus } from "@openmcp/contracts";
 
 const api: Api = {
   invoke: (channel, ...input) => ipcRenderer.invoke(channel, ...input),
@@ -14,8 +14,8 @@ const api: Api = {
 };
 
 const updater: UpdaterApi = {
-  choose: (choice) => ipcRenderer.send("updater:choice", choice),
-  onStatus: (callback) => ipcRenderer.on("updater:status", (_event, status: UpdateStatus) => callback(status))
+  choose: (choice) => ipcRenderer.send(updaterChannels.choice, choice),
+  onStatus: (callback) => ipcRenderer.on(updaterChannels.status, (_event, status: UpdateStatus) => callback(status))
 };
 
 contextBridge.exposeInMainWorld("api", api);

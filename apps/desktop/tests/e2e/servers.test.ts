@@ -1,12 +1,9 @@
-import { fileURLToPath } from "node:url";
 import { expect, test } from "vitest";
 
-import { createDatabase } from "@openmcp/database";
+import { createDatabase, migrationsFolder } from "@openmcp/database";
 import { getSecret } from "@openmcp/secrets";
 
 import { addCustomServer, deleteServer } from "../../src/main/servers";
-
-const migrationsFolder = fileURLToPath(new URL("../../../../packages/database/migrations", import.meta.url));
 
 test("round-trips a server's secret through the OS keyring", () => {
   const db = createDatabase({ path: ":memory:", migrationsFolder });

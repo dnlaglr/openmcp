@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 
-import { addServer, listServers, removeServer, type Database } from "@openmcp/database";
+import { addServer, getServer, listServers, removeServer, type Database } from "@openmcp/database";
 import type { InstalledServer, NewCustomServer } from "@openmcp/contracts";
 import { deleteSecret, setSecret } from "@openmcp/secrets";
 
@@ -41,7 +41,7 @@ export function addCustomServer(db: Database, input: NewCustomServer): Installed
 
 
 export function deleteServer(db: Database, id: string) {
-  const server = listServers(db).find((candidate) => candidate.id === id);
+  const server = getServer(db, id);
   if (!server) return;
 
   removeServer(db, id);

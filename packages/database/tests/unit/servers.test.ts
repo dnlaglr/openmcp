@@ -1,9 +1,7 @@
 import { beforeEach, expect, test } from "vitest";
-import { fileURLToPath } from "node:url";
 
-import { addServer, createDatabase, listServers, removeServer, type Database } from "../../src";
+import { addServer, createDatabase, migrationsFolder, getServer, listServers, removeServer, type Database } from "../../src";
 
-const migrationsFolder = fileURLToPath(new URL("../../migrations", import.meta.url));
 const launch = { command: "npx", args: ["-y", "server-everything"], env: {}, secretEnv: ["API_KEY"] };
 
 let db: Database;
@@ -33,4 +31,11 @@ test("removes servers and reports whether one was removed", () => {
   expect(removeServer(db, server.id)).toBe(true);
   expect(removeServer(db, server.id)).toBe(false);
   expect(listServers(db)).toEqual([]);
+});
+
+test("gets a server by id, or undefined when it doesn't exist", () => {
+  const server = addServer(db, { name: "test-server", source: "custom", launch });
+
+  expect(getServer(db, server.id)).toEqual(server);
+  expect(getServer(db, crypto.randomUUID())).toBeUndefined();
 });

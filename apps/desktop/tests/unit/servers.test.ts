@@ -1,7 +1,6 @@
 import { beforeEach, expect, test, vi } from "vitest";
-import { fileURLToPath } from "node:url";
 
-import { createDatabase, listServers, type Database } from "@openmcp/database";
+import { createDatabase, listServers, migrationsFolder, type Database } from "@openmcp/database";
 
 const keyring = vi.hoisted(() => new Map<string, string>());
 
@@ -14,8 +13,6 @@ vi.mock("@openmcp/secrets", () => ({
 }));
 
 const { addCustomServer, deleteServer } = await import("../../src/main/servers");
-
-const migrationsFolder = fileURLToPath(new URL("../../../../packages/database/migrations", import.meta.url));
 
 let db: Database;
 beforeEach(() => {

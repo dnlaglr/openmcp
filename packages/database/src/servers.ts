@@ -9,6 +9,11 @@ export function listServers(db: Database): InstalledServerRow[] {
 }
 
 
+export function getServer(db: Database, id: string): InstalledServerRow | undefined {
+  return db.select().from(installedServers).where(eq(installedServers.id, id)).get();
+}
+
+
 export function addServer(db: Database, server: NewInstalledServer): InstalledServerRow {
   return db.insert(installedServers).values(server).returning().get();
 }

@@ -1,9 +1,6 @@
-import { fileURLToPath } from "node:url";
 import { beforeEach, expect, test } from "vitest";
 
-import { createDatabase, type Database } from "../../src";
-
-const migrationsFolder = fileURLToPath(new URL("../../migrations", import.meta.url));
+import { createDatabase, migrationsFolder, type Database } from "../../src";
 
 let db: Database;
 beforeEach(() => { db = createDatabase({ path: ":memory:", migrationsFolder }); });
