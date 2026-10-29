@@ -20,6 +20,8 @@ export const LaunchSpec = z.object({
 });
 export type LaunchSpec = z.infer<typeof LaunchSpec>;
 
+export const commandLine = ({ command, args }: Pick<LaunchSpec, "command" | "args">) => [command, ...args].join(" ");
+
 export const ServerSource = z.enum(["registry", "custom"]);
 export type ServerSource = z.infer<typeof ServerSource>;
 
@@ -36,10 +38,16 @@ export const InstalledServer = z.object({
 });
 export type InstalledServer = z.infer<typeof InstalledServer>;
 
+const isCommandLine = (command: string) => /^[^\\/\s]+\s/.test(command);
+
 export const NewCustomServer = z
   .object({
     name: ServerName,
-    command: z.string().trim().min(1, "Enter a command"),
+    command: z
+      .string()
+      .trim()
+      .min(1, "Enter a command")
+      .refine((command) => !isCommandLine(command), "Put arguments in the Arguments field, one per line"),
     args: z.array(z.string()).default([]),
     env: EnvMap.default({}),
     secrets: EnvMap.default({}),

@@ -1,13 +1,23 @@
 import { z } from "zod";
 
+import { LogLine, ServerDetails, ServerState } from "./runtime";
 import { InstalledServer, NewCustomServer } from "./server";
+
+const ServerId = z.object({ id: z.uuid() });
 
 export const ipc = {
   "app:version": { input: z.void(), output: z.string() },
 
   "servers:list": { input: z.void(), output: z.array(InstalledServer) },
   "servers:addCustom": { input: NewCustomServer, output: InstalledServer },
-  "servers:remove": { input: z.object({ id: z.uuid() }), output: z.void() }
+  "servers:remove": { input: ServerId, output: z.void() },
+
+  "servers:start": { input: ServerId, output: z.void() },
+  "servers:stop": { input: ServerId, output: z.void() },
+  "servers:restart": { input: ServerId, output: z.void() },
+  "servers:states": { input: z.void(), output: z.array(ServerState) },
+  "servers:logs": { input: ServerId, output: z.array(LogLine) },
+  "servers:details": { input: ServerId, output: ServerDetails }
 } as const;
 
 export type IpcChannel = keyof typeof ipc;
@@ -16,7 +26,9 @@ export type IpcHandlerInput<C extends IpcChannel> = z.output<(typeof ipc)[C]["in
 export type IpcOutput<C extends IpcChannel> = z.output<(typeof ipc)[C]["output"]>;
 
 export const ipcEvents = {
-  "servers:changed": z.void()
+  "servers:changed": z.void(),
+  "servers:state": ServerState,
+  "servers:log": LogLine
 } as const;
 
 export type IpcEvent = keyof typeof ipcEvents;

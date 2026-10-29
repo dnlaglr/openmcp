@@ -1,9 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 
-import type { IpcInput } from "@openmcp/contracts";
+import { MAX_LOG_LINES, type IpcInput, type LogLine, type ServerState } from "@openmcp/contracts";
 
 const serversKey = ["servers"] as const;
+const statesKey = ["server-states"] as const;
+const logsKey = (id: string) => ["server-logs", id] as const;
+
+export type ServerAction = "start" | "stop" | "restart";
 
 export function useServers() {
   const queryClient = useQueryClient();
@@ -24,4 +28,61 @@ export function useAddCustomServer() {
 
 export function useRemoveServer() {
   return useMutation({ mutationFn: (id: string) => window.api.invoke("servers:remove", { id }) });
+}
+
+export function useServerStates() {
+  const queryClient = useQueryClient();
+
+  useEffect(
+    () =>
+      window.api.on("servers:state", (state) =>
+        queryClient.setQueryData<ServerState[]>(statesKey, (states = []) => [
+          ...states.filter((existing) => existing.id !== state.id),
+          state
+        ])
+      ),
+    [queryClient]
+  );
+
+  const { data: states = [] } = useQuery({ queryKey: statesKey, queryFn: () => window.api.invoke("servers:states") });
+
+  return (id: string): ServerState =>
+    states.find((state) => state.id === id) ?? {
+      id,
+      status: "stopped",
+      error: null,
+      restarts: 0,
+      pid: null,
+      startedAt: null
+    };
+}
+
+export function useServerAction() {
+  return useMutation({
+    mutationFn: ({ action, id }: { action: ServerAction; id: string }) => window.api.invoke(`servers:${action}`, { id })
+  });
+}
+
+export function useServerLogs(id: string) {
+  const queryClient = useQueryClient();
+
+  useEffect(
+    () =>
+      window.api.on("servers:log", (line) => {
+        if (line.serverId !== id) return;
+
+        queryClient.setQueryData<LogLine[]>(logsKey(id), (lines) => lines && [...lines, line].slice(-MAX_LOG_LINES));
+      }),
+    [queryClient, id]
+  );
+
+  return useQuery({ queryKey: logsKey(id), queryFn: () => window.api.invoke("servers:logs", { id }) });
+}
+
+export function useServerDetails(state: ServerState) {
+  return useQuery({
+    queryKey: ["server-details", state.id, state.startedAt],
+    queryFn: () => window.api.invoke("servers:details", { id: state.id }),
+    enabled: state.status === "running"
+  });
 }
