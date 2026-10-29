@@ -1,13 +1,21 @@
 import { beforeEach, expect, test } from "vitest";
-import { fileURLToPath } from "node:url";
 
-import { addServer, createDatabase, listServers, removeServer, type Database } from "../../src";
+import {
+  addServer,
+  createDatabase,
+  migrationsFolder,
+  getServer,
+  listServers,
+  removeServer,
+  type Database
+} from "../../src";
 
-const migrationsFolder = fileURLToPath(new URL("../../migrations", import.meta.url));
 const launch = { command: "npx", args: ["-y", "server-everything"], env: {}, secretEnv: ["API_KEY"] };
 
 let db: Database;
-beforeEach(() => { db = createDatabase({ path: ":memory:", migrationsFolder }) });
+beforeEach(() => {
+  db = createDatabase({ path: ":memory:", migrationsFolder });
+});
 
 test("adds and lists custom servers with their launch spec", () => {
   const server = addServer(db, { name: "test-server", source: "custom", launch });
@@ -24,7 +32,10 @@ test("rejects duplicate names because the name is the gateway URL", () => {
 
 test("requires registry name and version for registry servers", () => {
   expect(() => addServer(db, { name: "github", source: "registry", launch })).toThrow();
-  expect(addServer(db, { name: "github", source: "registry", registryName: "io.github/github", version: "1.2.0", launch }).version).toBe("1.2.0");
+  expect(
+    addServer(db, { name: "github", source: "registry", registryName: "io.github/github", version: "1.2.0", launch })
+      .version
+  ).toBe("1.2.0");
 });
 
 test("removes servers and reports whether one was removed", () => {
@@ -33,4 +44,11 @@ test("removes servers and reports whether one was removed", () => {
   expect(removeServer(db, server.id)).toBe(true);
   expect(removeServer(db, server.id)).toBe(false);
   expect(listServers(db)).toEqual([]);
+});
+
+test("gets a server by id, or undefined when it doesn't exist", () => {
+  const server = addServer(db, { name: "test-server", source: "custom", launch });
+
+  expect(getServer(db, server.id)).toEqual(server);
+  expect(getServer(db, crypto.randomUUID())).toBeUndefined();
 });

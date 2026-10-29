@@ -3,7 +3,7 @@ import electronUpdater from "electron-updater";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
-import type { UpdateStatus } from "@openmcp/contracts";
+import { updaterChannels, type UpdateStatus } from "@openmcp/contracts";
 
 import { createWindow } from "./windows";
 
@@ -12,14 +12,14 @@ const { autoUpdater } = electronUpdater;
 const RELEASES_URL = "https://github.com/dnlaglr/openmcp/releases/latest";
 const CHECK_TIMEOUT_MS = 10_000;
 
-
 function canInstall() {
   if (process.platform !== "darwin") return true;
 
-  const manifest = JSON.parse(readFileSync(join(app.getAppPath(), "package.json"), "utf-8")) as { openmcp?: { macSigned?: boolean } };
+  const manifest = JSON.parse(readFileSync(join(app.getAppPath(), "package.json"), "utf-8")) as {
+    openmcp?: { macSigned?: boolean };
+  };
   return manifest.openmcp?.macSigned === true;
 }
-
 
 async function findUpdate() {
   autoUpdater.autoDownload = false;
@@ -35,7 +35,6 @@ async function findUpdate() {
   }
 }
 
-
 function openUpdateWindow(version: string) {
   const window = createWindow(
     "updater",
@@ -47,14 +46,12 @@ function openUpdateWindow(version: string) {
   return window;
 }
 
-
 function waitForChoice(window: BrowserWindow) {
   return new Promise<unknown>((resolve) => {
-    ipcMain.once("updater:choice", (_event, choice: unknown) => resolve(choice));
+    ipcMain.once(updaterChannels.choice, (_event, choice: unknown) => resolve(choice));
     window.once("closed", () => resolve("continue"));
-  }).finally(() => ipcMain.removeAllListeners("updater:choice"));
+  }).finally(() => ipcMain.removeAllListeners(updaterChannels.choice));
 }
-
 
 export async function updateOnLaunch() {
   if (!app.isPackaged) return;
@@ -64,11 +61,11 @@ export async function updateOnLaunch() {
 
   const window = openUpdateWindow(version);
   const send = (status: UpdateStatus) => {
-    if (!window.isDestroyed()) window.webContents.send("updater:status", status);
+    if (!window.isDestroyed()) window.webContents.send(updaterChannels.status, status);
   };
 
   try {
-    if (await waitForChoice(window) !== "update") return;
+    if ((await waitForChoice(window)) !== "update") return;
 
     if (!canInstall()) {
       await shell.openExternal(RELEASES_URL);

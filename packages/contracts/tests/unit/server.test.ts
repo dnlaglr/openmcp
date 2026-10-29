@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { LaunchSpec, NewCustomServer } from "../../src";
+import { LaunchSpec, NewCustomServer, ServerName } from "../../src";
 
 describe("NewCustomServer", () => {
   it("fills in defaults and trims the command", () => {
@@ -38,5 +38,12 @@ describe("NewCustomServer", () => {
 describe("LaunchSpec", () => {
   it("rejects invalid secret env names so the keyring never stores unusable keys", () => {
     expect(LaunchSpec.safeParse({ command: "npx", secretEnv: ["NOT-VALID"] }).success).toBe(false);
+  });
+});
+
+describe("ServerName", () => {
+  it("rejects names that break TOML bare keys", () => {
+    expect(ServerName.safeParse("my-server_1").success).toBe(true);
+    expect(ServerName.safeParse("my.server").success).toBe(false);
   });
 });

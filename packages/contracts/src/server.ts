@@ -3,30 +3,14 @@ import { z } from "zod";
 export const ServerName = z.string().regex(/^[A-Za-z0-9_-]+$/, "Use letters, numbers, - or _");
 export type ServerName = z.infer<typeof ServerName>;
 
-export const EnvName = z.string().regex(/^[A-Za-z_][A-Za-z0-9_]*$/, "Use letters, numbers or _, not starting with a number");
+export const EnvName = z
+  .string()
+  .regex(/^[A-Za-z_][A-Za-z0-9_]*$/, "Use letters, numbers or _, not starting with a number");
 export type EnvName = z.infer<typeof EnvName>;
 
-export const Transport = z.enum(["stdio", "http", "sse"]);
-export type Transport = z.infer<typeof Transport>;
-
-const StringMap = z.record(z.string(), z.string());
-const EnvMap = z.record(EnvName, z.string(), { error: "Variable names use letters, numbers or _, and can't start with a number" });
-
-export const StdioServer = z.object({
-  type: z.literal("stdio"),
-  command: z.string().min(1),
-  args: z.array(z.string()).optional(),
-  env: StringMap.optional()
+const EnvMap = z.record(EnvName, z.string(), {
+  error: "Variable names use letters, numbers or _, and can't start with a number"
 });
-
-export const RemoteServer = z.object({
-  type: z.enum(["http", "sse"]),
-  url: z.url(),
-  headers: StringMap.optional()
-});
-
-export const ServerConfig = z.discriminatedUnion("type", [ StdioServer, RemoteServer ]);
-export type ServerConfig = z.infer<typeof ServerConfig>;
 
 export const LaunchSpec = z.object({
   command: z.string().min(1),
@@ -52,15 +36,17 @@ export const InstalledServer = z.object({
 });
 export type InstalledServer = z.infer<typeof InstalledServer>;
 
-export const NewCustomServer = z.object({
-  name: ServerName,
-  command: z.string().trim().min(1, "Enter a command"),
-  args: z.array(z.string()).default([]),
-  env: EnvMap.default({}),
-  secrets: EnvMap.default({}),
-  autostart: z.boolean().default(false)
-}).refine(
-  (server) => Object.keys(server.env).every((key) => !Object.hasOwn(server.secrets, key)),
-  { error: "A variable can't be both plain and secret", path: ["secrets"] }
-);
+export const NewCustomServer = z
+  .object({
+    name: ServerName,
+    command: z.string().trim().min(1, "Enter a command"),
+    args: z.array(z.string()).default([]),
+    env: EnvMap.default({}),
+    secrets: EnvMap.default({}),
+    autostart: z.boolean().default(false)
+  })
+  .refine((server) => Object.keys(server.env).every((key) => !Object.hasOwn(server.secrets, key)), {
+    error: "A variable can't be both plain and secret",
+    path: ["secrets"]
+  });
 export type NewCustomServer = z.infer<typeof NewCustomServer>;

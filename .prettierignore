@@ -1,2 +1,6 @@
 pnpm-lock.yaml
 packages/database/migrations/
+
+# CLI generated shadcn/ui components
+apps/desktop/src/renderer/components/ui
+apps/desktop/src/renderer/hooks/use-mobile.ts

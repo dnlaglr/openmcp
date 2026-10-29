@@ -1,11 +1,17 @@
 import { BrowserWindow, ipcMain } from "electron";
 
-import { ipc, type IpcChannel, type IpcEvent, type IpcEventPayload, type IpcHandlerInput, type IpcOutput } from "@openmcp/contracts";
+import {
+  ipc,
+  type IpcChannel,
+  type IpcEvent,
+  type IpcEventPayload,
+  type IpcHandlerInput,
+  type IpcOutput
+} from "@openmcp/contracts";
 
 import { isAppUrl } from "./windows";
 
 type Handler<C extends IpcChannel> = (input: IpcHandlerInput<C>) => IpcOutput<C> | Promise<IpcOutput<C>>;
-
 
 export function handle<C extends IpcChannel>(channel: C, handler: Handler<C>) {
   ipcMain.handle(channel, (event, input: unknown) => {
@@ -14,7 +20,9 @@ export function handle<C extends IpcChannel>(channel: C, handler: Handler<C>) {
   });
 }
 
-
-export function emit<E extends IpcEvent>(event: E, ...payload: IpcEventPayload<E> extends void ? [] : [IpcEventPayload<E>]) {
+export function emit<E extends IpcEvent>(
+  event: E,
+  ...payload: IpcEventPayload<E> extends void ? [] : [IpcEventPayload<E>]
+) {
   for (const window of BrowserWindow.getAllWindows()) window.webContents.send(event, ...payload);
 }

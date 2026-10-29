@@ -7,7 +7,7 @@ export default defineConfig({
   main: { build: { outDir: resolve("dist/main") } },
   preload: { build: { outDir: resolve("dist/preload") } },
   renderer: {
-    resolve: { alias: { "@": resolve("src/renderer/src") } },
+    resolve: { alias: { "@": resolve("src/renderer") } },
     plugins: [react(), tailwindcss()],
     build: {
       outDir: resolve("dist/renderer"),
