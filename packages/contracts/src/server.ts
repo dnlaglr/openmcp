@@ -20,6 +20,8 @@ export const LaunchSpec = z.object({
 });
 export type LaunchSpec = z.infer<typeof LaunchSpec>;
 
+export const commandLine = ({ command, args }: Pick<LaunchSpec, "command" | "args">) => [command, ...args].join(" ");
+
 export const ServerSource = z.enum(["registry", "custom"]);
 export type ServerSource = z.infer<typeof ServerSource>;
 
