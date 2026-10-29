@@ -33,6 +33,19 @@ describe("NewCustomServer", () => {
 
     expect(result.error?.issues.map((issue) => issue.path)).toEqual([["secrets"]]);
   });
+
+  it("rejects a whole command line in the command, pointing to the Arguments field", () => {
+    const result = NewCustomServer.safeParse({ name: "x", command: "npx -y @modelcontextprotocol/server-everything" });
+
+    expect(result.error?.issues).toMatchObject([
+      { path: ["command"], message: "Put arguments in the Arguments field, one per line" }
+    ]);
+  });
+
+  it("accepts a command path that contains spaces", () => {
+    expect(NewCustomServer.safeParse({ name: "x", command: "C:\\Program Files\\nodejs\\node.exe" }).success).toBe(true);
+    expect(NewCustomServer.safeParse({ name: "x", command: "/opt/My Tools/server" }).success).toBe(true);
+  });
 });
 
 describe("LaunchSpec", () => {
