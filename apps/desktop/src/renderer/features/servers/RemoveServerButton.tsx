@@ -3,8 +3,8 @@ import { Trash2 } from "lucide-react";
 import type { InstalledServer } from "@openmcp/contracts";
 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { useRemoveServer } from "@/hooks/use-servers";
-import { ipcErrorMessage } from "@/lib/ipc-error";
+import { useRemoveServer } from "./useServers";
+import { ipcErrorMessage } from "@/lib/ipcError";
 import { Button } from "@/components/ui/button";
 
 

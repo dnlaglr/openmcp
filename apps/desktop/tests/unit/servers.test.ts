@@ -12,7 +12,7 @@ vi.mock("@openmcp/secrets", () => ({
   deleteSecret: (key: string) => keyring.delete(key)
 }));
 
-const { addCustomServer, deleteServer } = await import("../../src/main/servers");
+const { addCustomServer, deleteServer, launchFor } = await import("../../src/main/servers/servers");
 
 let db: Database;
 beforeEach(() => {

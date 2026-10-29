@@ -1,5 +1,5 @@
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
-import type { ServerForm, ServerFormErrors } from "@/lib/server-form";
+import type { ServerForm, ServerFormErrors } from "./serverForm";
 import { EnvVariablesField } from "./EnvVariablesField";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";

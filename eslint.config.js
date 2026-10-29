@@ -11,8 +11,8 @@ export default defineConfig(
     "**/out/",
     "packages/database/migrations/",
     // CLI generated shadcn/ui components
-    "apps/desktop/src/renderer/src/components/ui",
-    "apps/desktop/src/renderer/src/hooks/use-mobile.ts"
+    "apps/desktop/src/renderer/components/ui",
+    "apps/desktop/src/renderer/hooks/use-mobile.ts"
   ]),
   js.configs.recommended,
   tseslint.configs.recommended,

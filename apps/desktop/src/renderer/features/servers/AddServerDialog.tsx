@@ -2,12 +2,12 @@ import { useState, type ComponentProps, type FormEvent } from "react";
 import { Plus } from "lucide-react";
 
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { useAddCustomServer } from "@/hooks/use-servers";
-import { useServerForm } from "@/hooks/use-server-form";
+import { useAddCustomServer } from "./useServers";
+import { useServerForm } from "./useServerForm";
 import { ServerFormFields } from "./ServerFormFields";
-import type { ServerForm } from "@/lib/server-form";
+import type { ServerForm } from "./serverForm";
 import { Button } from "@/components/ui/button";
-import { ipcErrorMessage } from "@/lib/ipc-error";
+import { ipcErrorMessage } from "@/lib/ipcError";
 
 
 export function AddServerDialog({ variant }: { variant?: ComponentProps<typeof Button>["variant"] }) {

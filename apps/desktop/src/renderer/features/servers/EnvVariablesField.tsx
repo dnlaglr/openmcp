@@ -1,7 +1,7 @@
 import { Plus, Trash2 } from "lucide-react";
 
 import { FieldError, FieldLegend, FieldSet } from "@/components/ui/field";
-import { newEnvRow, type EnvRow } from "@/lib/server-form";
+import { newEnvRow, type EnvRow } from "./serverForm";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";

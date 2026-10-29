@@ -3,7 +3,7 @@ import { expect, test } from "vitest";
 import { createDatabase, migrationsFolder } from "@openmcp/database";
 import { getSecret } from "@openmcp/secrets";
 
-import { addCustomServer, deleteServer } from "../../src/main/servers";
+import { addCustomServer, deleteServer } from "../../src/main/servers/servers";
 
 test("round-trips a server's secret through the OS keyring", () => {
   const db = createDatabase({ path: ":memory:", migrationsFolder });

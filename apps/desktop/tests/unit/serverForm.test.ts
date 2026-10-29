@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 
-import { emptyServerForm, parseServerForm, toNewCustomServer, type EnvRow } from "../../src/renderer/src/lib/server-form";
+import { emptyServerForm, parseServerForm, toNewCustomServer, type EnvRow } from "../../src/renderer/features/servers/serverForm";
 
 const row = (key: string, value: string, secret = false): EnvRow => ({ id: crypto.randomUUID(), key, value, secret });
 

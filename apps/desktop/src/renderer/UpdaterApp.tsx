@@ -9,7 +9,7 @@ import { Logo } from "@/components/Logo";
 const version = new URLSearchParams(location.search).get("version");
 
 
-export function Updater() {
+export function UpdaterApp() {
   const [status, setStatus] = useState<UpdateStatus | null>(null);
   useEffect(() => window.updater.onStatus(setStatus), []);
 

@@ -1,9 +1,11 @@
 import { app, session, type BrowserWindow } from "electron";
 
-import { registerHandlers } from "./handlers";
+import { registerServerHandlers } from "./servers/handlers";
 import { createMainWindow } from "./windows";
 import { updateOnLaunch } from "./updater";
 import { openDatabase } from "./database";
+import { handle } from "./ipc";
+
 
 const ALLOWED_PERMISSIONS = new Set(["clipboard-sanitized-write"]);
 
@@ -45,7 +47,8 @@ if (!app.requestSingleInstanceLock()) {
     const db = openDatabase();
     app.on("will-quit", () => db.$client.close());
 
-    registerHandlers(db);
+    handle("app:version", () => app.getVersion());
+    registerServerHandlers(db);
     getMainWindow();
 
     await updateOnLaunch();

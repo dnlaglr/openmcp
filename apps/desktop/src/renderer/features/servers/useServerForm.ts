@@ -1,13 +1,12 @@
 import { useState } from "react";
 
-import { emptyServerForm, parseServerForm, type ServerForm, type ServerFormErrors } from "@/lib/server-form";
+import { emptyServerForm, parseServerForm, type ServerForm, type ServerFormErrors } from "./serverForm";
 
 
 export function useServerForm() {
   const [form, setForm] = useState<ServerForm>(emptyServerForm);
   const [errors, setErrors] = useState<ServerFormErrors>({});
 
-  // Editing a field clears its error, so stale messages don't linger until the next submit.
   function update(patch: Partial<ServerForm>) {
     const edited = new Set<string>(Object.keys(patch));
     if (edited.has("env")) edited.add("secrets");
