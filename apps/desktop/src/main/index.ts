@@ -1,10 +1,15 @@
 import { app, session, type BrowserWindow } from "electron";
 
+import { listServers } from "@openmcp/database";
+
 import { registerServerHandlers } from "./servers/handlers";
+import { createSupervisor } from "./servers/supervisor";
+import { stdioConnector } from "./servers/connection";
+import { launchFor } from "./servers/servers";
 import { createMainWindow } from "./windows";
 import { updateOnLaunch } from "./updater";
 import { openDatabase } from "./database";
-import { handle } from "./ipc";
+import { emit, handle } from "./ipc";
 
 const ALLOWED_PERMISSIONS = new Set(["clipboard-sanitized-write"]);
 
@@ -45,12 +50,31 @@ if (!app.requestSingleInstanceLock()) {
     const db = openDatabase();
     app.on("will-quit", () => db.$client.close());
 
+    const supervisor = createSupervisor({
+      connect: stdioConnector(app.getVersion()),
+      resolve: (id) => launchFor(db, id),
+      onState: (state) => emit("servers:state", state),
+      onLog: (line) => emit("servers:log", line)
+    });
+
+    let quitting = false;
+    app.on("before-quit", (event) => {
+      if (quitting) return;
+
+      quitting = true;
+      event.preventDefault();
+      void supervisor.stopAll().finally(() => app.quit());
+    });
+
     handle("app:version", () => app.getVersion());
-    registerServerHandlers(db);
+    registerServerHandlers(db, supervisor);
     getMainWindow();
 
     await updateOnLaunch();
     launched = true;
     showMainWindow();
+
+    const autostart = listServers(db).filter((server) => server.autostart);
+    for (const server of autostart) void supervisor.start(server.id);
   });
 }

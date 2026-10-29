@@ -1,4 +1,5 @@
 import { beforeEach, expect, test, vi } from "vitest";
+import { randomUUID } from "node:crypto";
 
 import { createDatabase, listServers, migrationsFolder, type Database } from "@openmcp/database";
 
@@ -9,10 +10,11 @@ vi.mock("@openmcp/secrets", () => ({
     if (value === "fail") throw new Error("Keyring is locked");
     keyring.set(key, value);
   },
+  getSecret: (key: string) => keyring.get(key) ?? null,
   deleteSecret: (key: string) => keyring.delete(key)
 }));
 
-const { addCustomServer, deleteServer } = await import("../../src/main/servers/servers");
+const { addCustomServer, deleteServer, launchFor } = await import("../../src/main/servers/servers");
 
 let db: Database;
 beforeEach(() => {
@@ -78,4 +80,39 @@ test("deletes a server's secrets when the server is removed", () => {
 
   expect(listServers(db)).toEqual([]);
   expect(keyring.size).toBe(0);
+});
+
+test("launches with plain env plus secrets read from the keyring", () => {
+  const server = addCustomServer(db, {
+    name: "everything",
+    command: "npx",
+    args: ["-y", "server-everything"],
+    env: { LOG_LEVEL: "debug" },
+    secrets: { API_KEY: "sk-secret-value" },
+    autostart: false
+  });
+
+  expect(launchFor(db, server.id)).toEqual({
+    command: "npx",
+    args: ["-y", "server-everything"],
+    env: { LOG_LEVEL: "debug", API_KEY: "sk-secret-value" }
+  });
+});
+
+test("refuses to launch when a secret is missing from the keyring", () => {
+  const server = addCustomServer(db, {
+    name: "everything",
+    command: "npx",
+    args: [],
+    env: {},
+    secrets: { API_KEY: "sk" },
+    autostart: false
+  });
+  keyring.clear();
+
+  expect(() => launchFor(db, server.id)).toThrow("The secret API_KEY is missing from your keychain");
+});
+
+test("refuses to launch a server that no longer exists", () => {
+  expect(() => launchFor(db, randomUUID())).toThrow("That server no longer exists.");
 });
