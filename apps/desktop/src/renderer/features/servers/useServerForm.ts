@@ -2,7 +2,6 @@ import { useState } from "react";
 
 import { emptyServerForm, parseServerForm, type ServerForm, type ServerFormErrors } from "./serverForm";
 
-
 export function useServerForm() {
   const [form, setForm] = useState<ServerForm>(emptyServerForm);
   const [errors, setErrors] = useState<ServerFormErrors>({});

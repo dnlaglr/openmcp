@@ -1,13 +1,22 @@
 import { describe, expect, test } from "vitest";
 
-import { emptyServerForm, parseServerForm, toNewCustomServer, type EnvRow } from "../../src/renderer/features/servers/serverForm";
+import {
+  emptyServerForm,
+  parseServerForm,
+  toNewCustomServer,
+  type EnvRow
+} from "../../src/renderer/features/servers/serverForm";
 
 const row = (key: string, value: string, secret = false): EnvRow => ({ id: crypto.randomUUID(), key, value, secret });
 
-
 describe("toNewCustomServer", () => {
   test("splits arguments by line, trimming and dropping blank lines", () => {
-    const input = toNewCustomServer({ ...emptyServerForm, name: " github ", command: "npx", args: " -y \n\n@scope/server with space \n" });
+    const input = toNewCustomServer({
+      ...emptyServerForm,
+      name: " github ",
+      command: "npx",
+      args: " -y \n\n@scope/server with space \n"
+    });
 
     expect(input.name).toBe("github");
     expect(input.args).toEqual(["-y", "@scope/server with space"]);
@@ -23,7 +32,6 @@ describe("toNewCustomServer", () => {
     expect(input.secrets).toEqual({ API_KEY: "sk-123" });
   });
 });
-
 
 describe("parseServerForm", () => {
   test("returns the parsed server when the form is valid", () => {

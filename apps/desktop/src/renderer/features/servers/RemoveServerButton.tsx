@@ -2,11 +2,20 @@ import { Trash2 } from "lucide-react";
 
 import type { InstalledServer } from "@openmcp/contracts";
 
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger
+} from "@/components/ui/alert-dialog";
 import { useRemoveServer } from "./useServers";
 import { ipcErrorMessage } from "@/lib/ipcError";
 import { Button } from "@/components/ui/button";
-
 
 export function RemoveServerButton({ server }: { server: InstalledServer }) {
   const removeServer = useRemoveServer();
@@ -23,11 +32,19 @@ export function RemoveServerButton({ server }: { server: InstalledServer }) {
           <AlertDialogDescription>This deletes the server and the secrets stored for it.</AlertDialogDescription>
         </AlertDialogHeader>
 
-        {removeServer.error && <p role="alert" className="text-sm text-destructive">{ipcErrorMessage(removeServer.error)}</p>}
+        {removeServer.error && (
+          <p role="alert" className="text-sm text-destructive">
+            {ipcErrorMessage(removeServer.error)}
+          </p>
+        )}
 
         <AlertDialogFooter>
           <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction variant="destructive" disabled={removeServer.isPending} onClick={() => removeServer.mutate(server.id)}>
+          <AlertDialogAction
+            variant="destructive"
+            disabled={removeServer.isPending}
+            onClick={() => removeServer.mutate(server.id)}
+          >
             Remove
           </AlertDialogAction>
         </AlertDialogFooter>

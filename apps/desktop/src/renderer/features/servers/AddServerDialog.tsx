@@ -1,14 +1,22 @@
 import { useState, type ComponentProps, type FormEvent } from "react";
 import { Plus } from "lucide-react";
 
-import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger
+} from "@/components/ui/dialog";
 import { useAddCustomServer } from "./useServers";
 import { useServerForm } from "./useServerForm";
 import { ServerFormFields } from "./ServerFormFields";
 import type { ServerForm } from "./serverForm";
 import { Button } from "@/components/ui/button";
 import { ipcErrorMessage } from "@/lib/ipcError";
-
 
 export function AddServerDialog({ variant }: { variant?: ComponentProps<typeof Button>["variant"] }) {
   const [open, setOpen] = useState(false);
@@ -45,16 +53,24 @@ export function AddServerDialog({ variant }: { variant?: ComponentProps<typeof B
         <form onSubmit={submit} noValidate className="flex flex-col gap-6">
           <DialogHeader>
             <DialogTitle>Add custom server</DialogTitle>
-            <DialogDescription>Run any MCP server by its command. Secret values are stored securely in your OS keychain.</DialogDescription>
+            <DialogDescription>
+              Run any MCP server by its command. Secret values are stored securely in your OS keychain.
+            </DialogDescription>
           </DialogHeader>
 
           <ServerFormFields form={serverForm.form} errors={serverForm.errors} onChange={change} />
 
-          {addServer.error && <p role="alert" className="text-sm text-destructive">{ipcErrorMessage(addServer.error)}</p>}
+          {addServer.error && (
+            <p role="alert" className="text-sm text-destructive">
+              {ipcErrorMessage(addServer.error)}
+            </p>
+          )}
 
           <DialogFooter>
             <DialogClose render={<Button type="button" variant="outline" />}>Cancel</DialogClose>
-            <Button type="submit" disabled={addServer.isPending}>Add server</Button>
+            <Button type="submit" disabled={addServer.isPending}>
+              Add server
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>

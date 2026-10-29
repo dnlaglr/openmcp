@@ -24,9 +24,7 @@ export type IpcEventPayload<E extends IpcEvent> = z.output<(typeof ipcEvents)[E]
 
 export const updaterChannels = { choice: "updater:choice", status: "updater:status" } as const;
 
-export type UpdateStatus =
-  | { state: "downloading"; percent: number; }
-  | { state: "installing"; };
+export type UpdateStatus = { state: "downloading"; percent: number } | { state: "installing" };
 
 export type Api = {
   invoke: <C extends IpcChannel>(

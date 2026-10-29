@@ -10,7 +10,6 @@ type EnvVariableRowProps = { row: EnvRow; onChange: (patch: Partial<EnvRow>) => 
 
 type EnvVariablesFieldProps = { rows: EnvRow[]; error?: string; onChange: (rows: EnvRow[]) => void };
 
-
 function EnvVariableRow({ row, onChange, onRemove }: EnvVariableRowProps) {
   return (
     <div className="flex items-center gap-2">
@@ -38,9 +37,9 @@ function EnvVariableRow({ row, onChange, onRemove }: EnvVariableRowProps) {
   );
 }
 
-
 export function EnvVariablesField({ rows, error, onChange }: EnvVariablesFieldProps) {
-  const updateRow = (id: string, patch: Partial<EnvRow>) => onChange(rows.map((row) => (row.id === id ? { ...row, ...patch } : row)));
+  const updateRow = (id: string, patch: Partial<EnvRow>) =>
+    onChange(rows.map((row) => (row.id === id ? { ...row, ...patch } : row)));
   const removeRow = (id: string) => onChange(rows.filter((row) => row.id !== id));
 
   return (
@@ -48,11 +47,22 @@ export function EnvVariablesField({ rows, error, onChange }: EnvVariablesFieldPr
       <FieldLegend variant="label">Environment variables</FieldLegend>
 
       {rows.map((row) => (
-        <EnvVariableRow key={row.id} row={row} onChange={(patch) => updateRow(row.id, patch)} onRemove={() => removeRow(row.id)} />
+        <EnvVariableRow
+          key={row.id}
+          row={row}
+          onChange={(patch) => updateRow(row.id, patch)}
+          onRemove={() => removeRow(row.id)}
+        />
       ))}
 
       <FieldError>{error}</FieldError>
-      <Button type="button" variant="outline" size="sm" className="self-start" onClick={() => onChange([...rows, newEnvRow()])}>
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        className="self-start"
+        onClick={() => onChange([...rows, newEnvRow()])}
+      >
         <Plus /> Add variable
       </Button>
     </FieldSet>

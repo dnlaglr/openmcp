@@ -11,7 +11,6 @@ type ServerFormFieldsProps = {
   onChange: (patch: Partial<ServerForm>) => void;
 };
 
-
 export function ServerFormFields({ form, errors, onChange }: ServerFormFieldsProps) {
   return (
     <FieldGroup>
@@ -57,7 +56,11 @@ export function ServerFormFields({ form, errors, onChange }: ServerFormFieldsPro
       <EnvVariablesField rows={form.env} error={errors.env ?? errors.secrets} onChange={(env) => onChange({ env })} />
 
       <Field orientation="horizontal">
-        <Switch id="server-autostart" checked={form.autostart} onCheckedChange={(autostart) => onChange({ autostart })} />
+        <Switch
+          id="server-autostart"
+          checked={form.autostart}
+          onCheckedChange={(autostart) => onChange({ autostart })}
+        />
         <FieldLabel htmlFor="server-autostart">Start automatically when OpenMCP launches</FieldLabel>
       </Field>
     </FieldGroup>

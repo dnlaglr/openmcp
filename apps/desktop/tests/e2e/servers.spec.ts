@@ -8,12 +8,10 @@ const secretValue = "e2e-ui-secret-value";
 
 const launch = (dataDir: string) => electron.launch({ args: [appDir, `--user-data-dir=${dataDir}`] });
 
-
 function databaseContents(dataDir: string) {
   const files = ["openmcp.db", "openmcp.db-wal"].map((file) => join(`${dataDir}-dev`, file)).filter(existsSync);
   return files.map((file) => readFileSync(file, "latin1")).join("");
 }
-
 
 test("adds a custom server that survives a restart and keeps its secret out of the database", async () => {
   const dataDir = mkdtempSync(join(tmpdir(), "openmcp-e2e-"));

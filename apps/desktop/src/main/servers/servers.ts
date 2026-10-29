@@ -6,11 +6,9 @@ import { deleteSecret, setSecret } from "@openmcp/secrets";
 
 const secretKey = (serverId: string, name: string) => `server:${serverId}:${name}`;
 
-
 function deleteSecrets(serverId: string, names: string[]) {
   for (const name of names) deleteSecret(secretKey(serverId, name));
 }
-
 
 export function addCustomServer(db: Database, input: NewCustomServer): InstalledServer {
   if (listServers(db).some((server) => server.name === input.name)) {
@@ -38,7 +36,6 @@ export function addCustomServer(db: Database, input: NewCustomServer): Installed
     throw error;
   }
 }
-
 
 export function deleteServer(db: Database, id: string) {
   const server = getServer(db, id);

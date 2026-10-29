@@ -6,17 +6,11 @@ const RENDERER_DIR = join(__dirname, "../renderer");
 
 type Page = "index" | "updater";
 
-
 function devServerUrl() {
   return app.isPackaged ? undefined : process.env.ELECTRON_RENDERER_URL;
 }
 
-
-export function createWindow(
-  page: Page,
-  options: BrowserWindowConstructorOptions,
-  query: Record<string, string> = {}
-) {
+export function createWindow(page: Page, options: BrowserWindowConstructorOptions, query: Record<string, string> = {}) {
   const window = new BrowserWindow({
     ...options,
     show: false,
@@ -40,11 +34,9 @@ export function createWindow(
   return window;
 }
 
-
 export function createMainWindow() {
   return createWindow("index", { width: 1200, height: 800, minWidth: 900, minHeight: 600, title: "OpenMCP" });
 }
-
 
 export function isAppUrl(url: string) {
   const devUrl = devServerUrl();
@@ -52,7 +44,6 @@ export function isAppUrl(url: string) {
 
   return url.startsWith(`${pathToFileURL(RENDERER_DIR).href}/`);
 }
-
 
 function loadPage(window: BrowserWindow, page: Page, query: Record<string, string>) {
   const devUrl = devServerUrl();

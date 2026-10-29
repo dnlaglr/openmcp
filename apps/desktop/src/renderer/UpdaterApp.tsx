@@ -8,7 +8,6 @@ import { Logo } from "@/components/Logo";
 
 const version = new URLSearchParams(location.search).get("version");
 
-
 export function UpdaterApp() {
   const [status, setStatus] = useState<UpdateStatus | null>(null);
   useEffect(() => window.updater.onStatus(setStatus), []);
@@ -33,11 +32,17 @@ export function UpdaterApp() {
         <>
           <div className="flex flex-col gap-1">
             <h1 className="font-semibold">Update available</h1>
-            <p className="text-sm text-muted-foreground">OpenMCP version {version} is available. Would you like to update?</p>
+            <p className="text-sm text-muted-foreground">
+              OpenMCP version {version} is available. Would you like to update?
+            </p>
           </div>
           <div className="flex flex-col w-full gap-2 [-webkit-app-region:no-drag]">
-            <Button size="lg" onClick={update}>Update</Button>
-            <Button size="lg" variant="ghost" onClick={() => window.updater.choose("continue")}>Continue to OpenMCP</Button>
+            <Button size="lg" onClick={update}>
+              Update
+            </Button>
+            <Button size="lg" variant="ghost" onClick={() => window.updater.choose("continue")}>
+              Continue to OpenMCP
+            </Button>
           </div>
         </>
       )}

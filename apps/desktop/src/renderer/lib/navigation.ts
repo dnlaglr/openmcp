@@ -8,13 +8,9 @@ export const tabGroups: NavItem[][] = [
   [
     { page: "servers", label: "Servers", icon: Server },
     { page: "clients", label: "Clients", icon: Monitor },
-    { page: "activity", label: "Activity", icon: Activity },
+    { page: "activity", label: "Activity", icon: Activity }
   ],
-  [
-    { page: "catalog", label: "Catalog", icon: Store }
-  ]
+  [{ page: "catalog", label: "Catalog", icon: Store }]
 ];
 
-export const footerTabs: NavItem[] = [
-  { page: "settings", label: "Settings", icon: Settings }
-];
+export const footerTabs: NavItem[] = [{ page: "settings", label: "Settings", icon: Settings }];

@@ -4,7 +4,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { RemoveServerButton } from "./RemoveServerButton";
 import { Badge } from "@/components/ui/badge";
 
-
 export function ServerTable({ servers }: { servers: InstalledServer[] }) {
   return (
     <Table>
@@ -14,7 +13,9 @@ export function ServerTable({ servers }: { servers: InstalledServer[] }) {
           <TableHead>Command</TableHead>
           <TableHead>Source</TableHead>
           <TableHead>Autostart</TableHead>
-          <TableHead className="w-0"><span className="sr-only">Actions</span></TableHead>
+          <TableHead className="w-0">
+            <span className="sr-only">Actions</span>
+          </TableHead>
         </TableRow>
       </TableHeader>
 

@@ -5,5 +5,5 @@ export function ClientsPage() {
     <>
       <PageHeader title="Clients" />
     </>
-  )
+  );
 }

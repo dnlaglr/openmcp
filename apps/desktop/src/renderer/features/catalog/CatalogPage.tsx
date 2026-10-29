@@ -5,5 +5,5 @@ export function CatalogPage() {
     <>
       <PageHeader title="Catalog" />
     </>
-  )
+  );
 }

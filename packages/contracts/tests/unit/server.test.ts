@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { LaunchSpec, NewCustomServer , ServerName} from "../../src";
+import { LaunchSpec, NewCustomServer, ServerName } from "../../src";
 
 describe("NewCustomServer", () => {
   it("fills in defaults and trims the command", () => {

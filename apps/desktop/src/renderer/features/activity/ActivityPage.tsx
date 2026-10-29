@@ -5,5 +5,5 @@ export function ActivityPage() {
     <>
       <PageHeader title="Activity" />
     </>
-  )
+  );
 }

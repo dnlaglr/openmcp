@@ -18,7 +18,6 @@ import {
 
 type NavProps = { current: Page; onSelect: (page: Page) => void };
 
-
 function NavMenu({ items, current, onSelect }: NavProps & { items: NavItem[] }) {
   return (
     <SidebarMenu>
@@ -33,7 +32,6 @@ function NavMenu({ items, current, onSelect }: NavProps & { items: NavItem[] }) 
     </SidebarMenu>
   );
 }
-
 
 export function AppSidebar(props: NavProps) {
   return (

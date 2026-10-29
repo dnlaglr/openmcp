@@ -7,18 +7,24 @@ import { ServerTable } from "./ServerTable";
 import { ipcErrorMessage } from "@/lib/ipcError";
 import { useServers } from "./useServers";
 
-
 function ServersContent() {
   const { data: servers, error, isPending } = useServers();
 
   if (isPending) return null;
-  if (error) return <p role="alert" className="text-sm text-destructive">{ipcErrorMessage(error)}</p>;
+  if (error)
+    return (
+      <p role="alert" className="text-sm text-destructive">
+        {ipcErrorMessage(error)}
+      </p>
+    );
   if (servers.length > 0) return <ServerTable servers={servers} />;
 
   return (
     <Empty className="border border-dashed">
       <EmptyHeader>
-        <EmptyMedia variant="icon"><Server /></EmptyMedia>
+        <EmptyMedia variant="icon">
+          <Server />
+        </EmptyMedia>
         <EmptyTitle>No servers yet</EmptyTitle>
         <EmptyDescription>Add a custom server by its command, or install one from the Catalog.</EmptyDescription>
       </EmptyHeader>
@@ -28,7 +34,6 @@ function ServersContent() {
     </Empty>
   );
 }
-
 
 export function ServersPage() {
   return (

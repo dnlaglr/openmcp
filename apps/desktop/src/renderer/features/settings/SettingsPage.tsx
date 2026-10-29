@@ -5,5 +5,5 @@ export function SettingsPage() {
     <>
       <PageHeader title="Settings" />
     </>
-  )
+  );
 }
