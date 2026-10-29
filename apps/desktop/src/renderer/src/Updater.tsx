@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
-import { Boxes } from "lucide-react";
 
 import type { UpdateStatus } from "@openmcp/contracts";
 
 import { Progress, ProgressLabel, ProgressValue } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
+import { Logo } from "@/components/Logo";
 
 const version = new URLSearchParams(location.search).get("version");
 
@@ -21,7 +21,7 @@ export function Updater() {
   return (
     <main className="flex flex-col justify-center items-center h-screen text-center gap-6 p-8 select-none [-webkit-app-region:drag]">
       <div className="flex justify-center items-center size-20 text-primary-foreground bg-primary rounded-2xl">
-        <Boxes className="size-10" />
+        <Logo className="size-10" />
       </div>
 
       {status ? (
