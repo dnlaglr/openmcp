@@ -19,9 +19,6 @@ coverage/
 .env*
 !.env.example
 
-# Turbo
-.turbo/
-
 # Debug
 *.log
 
