@@ -13,9 +13,9 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger
 } from "@/components/ui/alert-dialog";
-import { useRemoveServer } from "./useServers";
 import { ipcErrorMessage } from "@/lib/ipcError";
 import { Button } from "@/components/ui/button";
+import { useRemoveServer } from "./useServers";
 
 export function RemoveServerButton({ server }: { server: InstalledServer }) {
   const removeServer = useRemoveServer();

@@ -1,10 +1,10 @@
 import { Server } from "lucide-react";
 
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
-import { AddServerDialog } from "./AddServerDialog";
 import { PageHeader } from "@/components/PageHeader";
-import { ServerTable } from "./ServerTable";
+import { AddServerDialog } from "./AddServerDialog";
 import { ipcErrorMessage } from "@/lib/ipcError";
+import { ServerTable } from "./ServerTable";
 import { useServers } from "./useServers";
 
 function ServersContent() {

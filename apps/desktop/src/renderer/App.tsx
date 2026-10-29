@@ -1,12 +1,12 @@
 import { useState, type ComponentType } from "react";
 
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
-import { AppSidebar } from "@/components/AppSidebar";
-import { ServersPage } from "@/features/servers/ServersPage";
-import { ClientsPage } from "@/features/clients/ClientsPage";
 import { ActivityPage } from "@/features/activity/ActivityPage";
-import { CatalogPage } from "@/features/catalog/CatalogPage";
 import { SettingsPage } from "@/features/settings/SettingsPage";
+import { CatalogPage } from "@/features/catalog/CatalogPage";
+import { ClientsPage } from "@/features/clients/ClientsPage";
+import { ServersPage } from "@/features/servers/ServersPage";
+import { AppSidebar } from "@/components/AppSidebar";
 import type { Page } from "@/lib/navigation";
 
 const pages = {

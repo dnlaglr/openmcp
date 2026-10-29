@@ -1,8 +1,5 @@
 import { Fragment } from "react";
 
-import { GatewayStatus } from "@/components/GatewayStatus";
-import { Logo } from "@/components/Logo";
-import { footerTabs, tabGroups, type NavItem, type Page } from "@/lib/navigation";
 import {
   Sidebar,
   SidebarContent,
@@ -15,6 +12,9 @@ import {
   SidebarRail,
   SidebarSeparator
 } from "@/components/ui/sidebar";
+import { footerTabs, tabGroups, type NavItem, type Page } from "@/lib/navigation";
+import { GatewayStatus } from "@/components/GatewayStatus";
+import { Logo } from "@/components/Logo";
 
 type NavProps = { current: Page; onSelect: (page: Page) => void };
 

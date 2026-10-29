@@ -11,12 +11,12 @@ import {
   DialogTitle,
   DialogTrigger
 } from "@/components/ui/dialog";
-import { useAddCustomServer } from "./useServers";
-import { useServerForm } from "./useServerForm";
 import { ServerFormFields } from "./ServerFormFields";
-import type { ServerForm } from "./serverForm";
-import { Button } from "@/components/ui/button";
+import { useAddCustomServer } from "./useServers";
 import { ipcErrorMessage } from "@/lib/ipcError";
+import { useServerForm } from "./useServerForm";
+import { Button } from "@/components/ui/button";
+import type { ServerForm } from "./serverForm";
 
 export function AddServerDialog({ variant }: { variant?: ComponentProps<typeof Button>["variant"] }) {
   const [open, setOpen] = useState(false);
