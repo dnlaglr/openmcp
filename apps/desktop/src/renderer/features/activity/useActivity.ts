@@ -10,6 +10,8 @@ import { useEffect, useEffectEvent, useRef, useState, type RefObject } from "rea
 
 import { ACTIVITY_PAGE_SIZE, type ActivityCursor, type ActivityEntry, type ActivityScope } from "@openmcp/contracts";
 
+import { useVisibility } from "@/hooks/useVisibility";
+
 const summaryKey = ["activity", "summary"] as const;
 const trailKey = ["activity", "trail"] as const;
 
@@ -41,19 +43,6 @@ export function useActivityTrail(scope: ActivityScope, failuresOnly: boolean) {
     },
     placeholderData: keepPreviousData
   });
-}
-
-export function useVisibility(ref: RefObject<Element | null>, onChange: (visible: boolean) => void) {
-  const changed = useEffectEvent(onChange);
-
-  useEffect(() => {
-    const element = ref.current;
-    if (!element) return;
-
-    const observer = new IntersectionObserver(([entry]) => changed(entry.isIntersecting));
-    observer.observe(element);
-    return () => observer.disconnect();
-  }, [ref]);
 }
 
 function refreshTrail(queryClient: QueryClient) {
