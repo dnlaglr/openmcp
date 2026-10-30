@@ -4,8 +4,9 @@ import { ArrowUp } from "lucide-react";
 import type { ActivityOutcome, ActivityScope } from "@openmcp/contracts";
 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { useActivityTrail, useLiveTrail, useVisibility } from "./useActivity";
+import { useActivityTrail, useLiveTrail } from "./useActivity";
 import { formatDuration, formatWhen } from "./activityFormat";
+import { useVisibility } from "@/hooks/useVisibility";
 import { ipcErrorMessage } from "@/lib/ipcError";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";

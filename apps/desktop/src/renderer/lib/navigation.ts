@@ -2,6 +2,8 @@ import { Activity, Monitor, Server, Settings, Store, type LucideIcon } from "luc
 
 export type Page = "servers" | "clients" | "activity" | "catalog" | "settings";
 
+export type PageProps = { navigate: (page: Page) => void };
+
 export type NavItem = { page: Page; label: string; icon: LucideIcon };
 
 export const tabGroups: NavItem[][] = [
