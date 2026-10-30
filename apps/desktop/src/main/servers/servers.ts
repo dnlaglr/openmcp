@@ -1,6 +1,13 @@
 import { randomUUID } from "node:crypto";
 
-import { addServer, getServer, listServers, removeServer, type Database } from "@openmcp/database";
+import {
+  addServer,
+  getServer,
+  listServers,
+  removeServer,
+  type Database,
+  type NewInstalledServer
+} from "@openmcp/database";
 import type { InstalledServer, NewCustomServer } from "@openmcp/contracts";
 import { deleteSecret, getSecret, setSecret } from "@openmcp/secrets";
 
@@ -12,31 +19,40 @@ function deleteSecrets(serverId: string, names: string[]) {
   for (const name of names) deleteSecret(secretKey(serverId, name));
 }
 
-export function addCustomServer(db: Database, input: NewCustomServer): InstalledServer {
-  if (listServers(db).some((server) => server.name === input.name)) {
-    throw new Error(`A server named "${input.name}" already exists.`);
+export type NewServer = Pick<NewInstalledServer, "name" | "source" | "registryName" | "version" | "autostart"> & {
+  launch: Launch;
+  secrets: Record<string, string>;
+};
+
+export function saveServer(db: Database, { launch, secrets, ...server }: NewServer): InstalledServer {
+  if (listServers(db).some((existing) => existing.name === server.name)) {
+    throw new Error(`A server named "${server.name}" already exists.`);
   }
 
   const id = randomUUID();
   const stored: string[] = [];
 
   try {
-    for (const [name, value] of Object.entries(input.secrets)) {
+    for (const [name, value] of Object.entries(secrets)) {
       setSecret(secretKey(id, name), value);
       stored.push(name);
     }
 
-    return addServer(db, {
-      id,
-      name: input.name,
-      source: "custom",
-      autostart: input.autostart,
-      launch: { command: input.command, args: input.args, env: input.env, secretEnv: Object.keys(input.secrets) }
-    });
+    return addServer(db, { ...server, id, launch: { ...launch, secretEnv: Object.keys(secrets) } });
   } catch (error) {
     deleteSecrets(id, stored);
     throw error;
   }
+}
+
+export function addCustomServer(db: Database, input: NewCustomServer): InstalledServer {
+  return saveServer(db, {
+    name: input.name,
+    source: "custom",
+    autostart: input.autostart,
+    launch: { command: input.command, args: input.args, env: input.env },
+    secrets: input.secrets
+  });
 }
 
 export function launchFor(db: Database, id: string): Launch {
