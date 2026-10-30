@@ -211,3 +211,18 @@ test("keeps only the most recent log lines", async () => {
   expect(lines).toHaveLength(MAX_LOG_LINES);
   expect(lines.at(-1)?.text).toBe(`line ${MAX_LOG_LINES + 9}`);
 });
+
+test("notes a line from OpenMCP in a known server's logs and ignores unknown servers", async () => {
+  const { supervisor, logs } = setup();
+  await supervisor.start(id);
+
+  supervisor.note(id, "Resource shared://doc is also provided by alpha; agents will use alpha's.");
+  supervisor.note(crypto.randomUUID(), "nobody hears this");
+
+  expect(logs.at(-1)).toMatchObject({
+    serverId: id,
+    source: "openmcp",
+    text: "Resource shared://doc is also provided by alpha; agents will use alpha's."
+  });
+  expect(supervisor.logs(id).at(-1)?.text).toBe(logs.at(-1)?.text);
+});
