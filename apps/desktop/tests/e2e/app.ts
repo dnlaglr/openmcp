@@ -1,5 +1,6 @@
-import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync } from "node:fs";
 import { _electron as electron } from "@playwright/test";
+import { rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -16,13 +17,17 @@ export function databaseContents(dataDir: string) {
   return files.map((file) => readFileSync(file, "latin1")).join("");
 }
 
+const removeDataDir = (dataDir: string) =>
+  Promise.all([dataDir, `${dataDir}-dev`].map((dir) => rm(dir, { recursive: true, force: true })));
+
 export async function withDataDir(run: (dataDir: string) => Promise<void>) {
   const dataDir = mkdtempSync(join(tmpdir(), "openmcp-e2e-"));
 
   try {
     await run(dataDir);
-  } finally {
-    rmSync(dataDir, { recursive: true, force: true });
-    rmSync(`${dataDir}-dev`, { recursive: true, force: true });
+  } catch (error) {
+    await removeDataDir(dataDir).catch(() => undefined);
+    throw error;
   }
+  await removeDataDir(dataDir);
 }
