@@ -21,8 +21,8 @@ export function useServerForm() {
     return result.success ? result.data : null;
   }
 
-  function reset() {
-    setForm(emptyServerForm);
+  function reset(form: ServerForm) {
+    setForm(form);
     setErrors({});
   }
 

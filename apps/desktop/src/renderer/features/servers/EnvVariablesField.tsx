@@ -23,6 +23,7 @@ function EnvVariableRow({ row, onChange, onRemove }: EnvVariableRowProps) {
       <Input
         aria-label="Value"
         type={row.secret ? "password" : "text"}
+        placeholder={row.secret && row.stored !== null ? "Stored, leave blank to keep" : undefined}
         value={row.value}
         onChange={(event) => onChange({ value: event.target.value })}
       />

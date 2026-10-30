@@ -6,6 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ServerDetailsDialog } from "./ServerDetailsDialog";
 import { RemoveServerButton } from "./RemoveServerButton";
 import { ServerStatusBadge } from "./ServerStatusBadge";
+import { EditServerButton } from "./EditServerButton";
 import { ServerControls } from "./ServerControls";
 import { useServerStates } from "./useServers";
 import { Badge } from "@/components/ui/badge";
@@ -64,6 +65,7 @@ export function ServerTable({ servers }: { servers: InstalledServer[] }) {
                 <TableCell onClick={(event) => event.stopPropagation()}>
                   <div className="flex items-center justify-end">
                     <ServerControls server={server} state={state} />
+                    <EditServerButton server={server} state={state} />
                     <RemoveServerButton server={server} />
                   </div>
                 </TableCell>

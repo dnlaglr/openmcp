@@ -26,6 +26,12 @@ export function useAddCustomServer() {
   });
 }
 
+export function useUpdateServer() {
+  return useMutation({
+    mutationFn: (input: IpcInput<"servers:update">) => window.api.invoke("servers:update", input)
+  });
+}
+
 export function useRemoveServer() {
   return useMutation({ mutationFn: (id: string) => window.api.invoke("servers:remove", { id }) });
 }
