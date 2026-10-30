@@ -81,23 +81,22 @@ export function ActivityBreakdown({ groups, drill, onDrill }: DrillProps & { gro
                 className={cn(drillable && "cursor-pointer")}
                 onClick={drillable ? () => open(group) : undefined}
               >
-                <TableCell className="max-w-96 truncate font-medium">
-                  {group.kind && (
-                    <Badge variant="outline" className="mr-2">
-                      {group.kind}
-                    </Badge>
-                  )}
-                  {drillable ? (
-                    <button
-                      type="button"
-                      aria-pressed={byCall ? selected(group) : undefined}
-                      className="rounded-sm outline-none hover:underline focus-visible:ring-3 focus-visible:ring-ring/30"
-                    >
-                      {label(group)}
-                    </button>
-                  ) : (
-                    <span className="text-muted-foreground">{label(group)}</span>
-                  )}
+                <TableCell className="max-w-96 font-medium">
+                  <div className="flex min-w-0 items-center gap-2">
+                    {group.kind && <Badge variant="outline">{group.kind}</Badge>}
+                    {drillable ? (
+                      <button
+                        type="button"
+                        title={label(group)}
+                        aria-pressed={byCall ? selected(group) : undefined}
+                        className="truncate rounded-sm outline-none hover:underline focus-visible:ring-3 focus-visible:ring-ring/30"
+                      >
+                        {label(group)}
+                      </button>
+                    ) : (
+                      <span className="text-muted-foreground">{label(group)}</span>
+                    )}
+                  </div>
                 </TableCell>
                 <TableCell className="text-right tabular-nums">{formatCount(group.calls)}</TableCell>
                 <TableCell className="text-right tabular-nums">{formatRate(group.failures, group.calls)}</TableCell>
