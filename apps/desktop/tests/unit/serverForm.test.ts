@@ -104,6 +104,16 @@ describe("parseServerForm", () => {
       errors: { env: "Enter a value for GITHUB_TOKEN. Stored secrets aren't shown." }
     });
   });
+
+  test("rejects a stored secret renamed to a name a shell can't use", () => {
+    const form = serverFormFrom(installed);
+    const result = parseServerForm({ ...form, env: [form.env[0], { ...form.env[1], key: "GITHUB-TOKEN" }] });
+
+    expect(result).toEqual({
+      success: false,
+      errors: { env: "Variable names use letters, numbers or _, and can't start with a number" }
+    });
+  });
 });
 
 describe("serverFormFrom", () => {

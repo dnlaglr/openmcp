@@ -1,4 +1,4 @@
-import { NewCustomServer, type InstalledServer, type IpcInput } from "@openmcp/contracts";
+import { EnvName, NewCustomServer, type InstalledServer, type IpcInput } from "@openmcp/contracts";
 
 // `stored` is the keychain name a secret row was loaded with. Stored values never reach the renderer.
 export type EnvRow = { id: string; key: string; value: string; secret: boolean; stored: string | null };
@@ -81,11 +81,13 @@ export function parseServerForm(form: ServerForm): ParsedServerForm {
   const result = NewCustomServer.safeParse(toNewCustomServer(form));
   const duplicateNames = hasDuplicateNames(form.env);
   const unshown = unshownSecret(form.env);
+  const invalidKeptName = Object.keys(keptSecrets(form)).some((name) => !EnvName.safeParse(name).success);
 
-  if (result.success && !duplicateNames && !unshown) return { success: true, data: result.data };
+  if (result.success && !duplicateNames && !unshown && !invalidKeptName) return { success: true, data: result.data };
 
   const errors = result.success ? {} : fieldErrors(result.error.issues);
   if (duplicateNames) errors.env ??= "Each variable name can only be used once";
+  if (invalidKeptName) errors.env ??= "Variable names use letters, numbers or _, and can't start with a number";
   if (unshown) errors.env ??= `Enter a value for ${unshown.key.trim()}. Stored secrets aren't shown.`;
 
   return { success: false, errors };
