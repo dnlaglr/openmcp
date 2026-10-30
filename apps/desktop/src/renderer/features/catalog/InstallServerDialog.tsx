@@ -30,7 +30,7 @@ const linkClass = "underline-offset-4 hover:underline";
 
 type CatalogInputFieldProps = { input: CatalogInput; value: string; error?: string; onChange: (value: string) => void };
 
-function CatalogInputField({ input, value, error, onChange }: CatalogInputFieldProps) {
+export function CatalogInputField({ input, value, error, onChange }: CatalogInputFieldProps) {
   const id = `install-${input.id}`;
   const description = input.description && <FieldDescription>{input.description}</FieldDescription>;
 

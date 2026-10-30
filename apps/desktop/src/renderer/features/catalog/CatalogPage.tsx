@@ -1,11 +1,13 @@
 import { useRef, useState, type ReactNode } from "react";
 import { PackageSearch, Search } from "lucide-react";
 
-import { CATALOG_MIN_QUERY, type CatalogEntry } from "@openmcp/contracts";
+import { CATALOG_MIN_QUERY, type AvailableUpdate, type CatalogEntry } from "@openmcp/contracts";
 
-import { useCatalogSearch, useDebounced, useInstalledServer, usePopular } from "./useCatalog";
+import { useCatalogSearch, useDebounced, useInstalledServer, usePopular, useUpdates } from "./useCatalog";
 import { Empty, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
+import { useServers, useServerStates } from "@/features/servers/useServers";
 import { InstallServerDialog } from "./InstallServerDialog";
+import { UpdateServerDialog } from "./UpdateServerDialog";
 import { useVisibility } from "@/hooks/useVisibility";
 import { PageHeader } from "@/components/PageHeader";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -18,10 +20,15 @@ import { CatalogCard } from "./CatalogCard";
 const SEARCH_DELAY_MS = 300;
 const gridClass = "grid gap-4 sm:grid-cols-2 xl:grid-cols-3";
 
-type GridActions = { install: (entry: CatalogEntry) => void; openServers: () => void };
+type GridActions = {
+  install: (entry: CatalogEntry) => void;
+  update: (update: AvailableUpdate) => void;
+  openServers: () => void;
+};
 
 function CatalogGrid({ entries, actions }: { entries: CatalogEntry[]; actions: GridActions }) {
   const installedServer = useInstalledServer();
+  const updates = useUpdates();
 
   return (
     <div className={gridClass}>
@@ -30,11 +37,25 @@ function CatalogGrid({ entries, actions }: { entries: CatalogEntry[]; actions: G
           key={entry.name}
           entry={entry}
           installed={installedServer(entry.name)}
+          update={updates.find((update) => update.entry.name === entry.name)}
           onInstall={() => actions.install(entry)}
+          onUpdate={actions.update}
           onOpenServers={actions.openServers}
         />
       ))}
     </div>
+  );
+}
+
+function UpdatesSection({ actions }: { actions: GridActions }) {
+  const updates = useUpdates();
+  if (updates.length === 0) return null;
+
+  return (
+    <section className="flex flex-col gap-3">
+      <h2 className="text-sm font-medium">Updates</h2>
+      <CatalogGrid entries={updates.map((update) => update.entry)} actions={actions} />
+    </section>
   );
 }
 
@@ -115,6 +136,11 @@ export function CatalogPage({ navigate }: PageProps) {
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<CatalogEntry>();
   const [installOpen, setInstallOpen] = useState(false);
+  const [update, setUpdate] = useState<AvailableUpdate>();
+  const [updateOpen, setUpdateOpen] = useState(false);
+  const { data: servers = [] } = useServers();
+  const stateOf = useServerStates();
+  const updating = servers.find((server) => server.id === update?.serverId);
   const typed = search.trim();
   const query = useDebounced(typed, SEARCH_DELAY_MS);
 
@@ -123,12 +149,22 @@ export function CatalogPage({ navigate }: PageProps) {
       setSelected(entry);
       setInstallOpen(true);
     },
+    update: (next) => {
+      setUpdate(next);
+      setUpdateOpen(true);
+    },
     openServers: () => navigate("servers")
   };
 
   let content: ReactNode = <SearchResults query={query} actions={actions} />;
-  if (typed.length === 0) content = <PopularServers actions={actions} />;
-  else if (typed.length < CATALOG_MIN_QUERY) {
+  if (typed.length === 0) {
+    content = (
+      <div className="flex flex-col gap-8">
+        <UpdatesSection actions={actions} />
+        <PopularServers actions={actions} />
+      </div>
+    );
+  } else if (typed.length < CATALOG_MIN_QUERY) {
     content = <p className="text-sm text-muted-foreground">Type at least {CATALOG_MIN_QUERY} characters to search.</p>;
   }
 
@@ -155,6 +191,17 @@ export function CatalogPage({ navigate }: PageProps) {
 
       {selected && (
         <InstallServerDialog key={selected.name} entry={selected} open={installOpen} onOpenChange={setInstallOpen} />
+      )}
+
+      {update && updating && (
+        <UpdateServerDialog
+          key={`${update.serverId}:${update.entry.version}:${update.inputsChanged}`}
+          update={update}
+          server={updating}
+          state={stateOf(updating.id)}
+          open={updateOpen}
+          onOpenChange={setUpdateOpen}
+        />
       )}
     </>
   );
