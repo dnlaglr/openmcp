@@ -1,7 +1,7 @@
 import { z } from "zod";
 
+import { AvailableUpdate, CatalogEntry, CatalogInstall, CatalogResults, CatalogSearch, CatalogUpdate } from "./catalog";
 import { ActivityEntry, ActivityQuery, ActivityScope, ActivitySummary } from "./activity";
-import { CatalogEntry, CatalogInstall, CatalogResults, CatalogSearch } from "./catalog";
 import { InstalledServer, NewCustomServer, ServerUpdate } from "./server";
 import { GatewayConnection, GatewayPort, GatewayState } from "./gateway";
 import { LogLine, ServerDetails, ServerState } from "./runtime";
@@ -28,6 +28,8 @@ export const ipc = {
   "catalog:popular": { input: z.void(), output: z.array(CatalogEntry) },
   "catalog:search": { input: CatalogSearch, output: CatalogResults },
   "catalog:install": { input: CatalogInstall, output: InstalledServer },
+  "catalog:updates": { input: z.void(), output: z.array(AvailableUpdate) },
+  "catalog:update": { input: CatalogUpdate, output: InstalledServer },
 
   "gateway:state": { input: z.void(), output: GatewayState },
   "gateway:connection": { input: z.void(), output: GatewayConnection },
