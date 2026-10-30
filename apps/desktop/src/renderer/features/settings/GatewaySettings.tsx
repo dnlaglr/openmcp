@@ -1,5 +1,4 @@
 import { useState, type FormEvent } from "react";
-import { Check, Copy } from "lucide-react";
 
 import { GatewayPort } from "@openmcp/contracts";
 
@@ -24,25 +23,10 @@ import {
   FieldSet
 } from "@/components/ui/field";
 import { useGatewayConnection, useGatewayState, useRegenerateGatewayToken, useSetGatewayPort } from "./useGateway";
+import { CopyButton } from "@/components/CopyButton";
 import { ipcErrorMessage } from "@/lib/ipcError";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-
-function CopyButton({ label, value }: { label: string; value: string }) {
-  const [copied, setCopied] = useState(false);
-
-  async function copy() {
-    await navigator.clipboard.writeText(value);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
-  }
-
-  return (
-    <Button variant="outline" size="icon" aria-label={label} disabled={!value} onClick={() => void copy()}>
-      {copied ? <Check /> : <Copy />}
-    </Button>
-  );
-}
 
 function RegenerateTokenButton() {
   const regenerate = useRegenerateGatewayToken();

@@ -3,8 +3,10 @@ import { z } from "zod";
 import { GatewayConnection, GatewayPort, GatewayState } from "./gateway";
 import { LogLine, ServerDetails, ServerState } from "./runtime";
 import { InstalledServer, NewCustomServer } from "./server";
+import { ClientId, ClientState } from "./clients";
 
 const ServerId = z.object({ id: z.uuid() });
+const ClientTarget = z.object({ id: ClientId });
 
 export const ipc = {
   "app:version": { input: z.void(), output: z.string() },
@@ -23,7 +25,12 @@ export const ipc = {
   "gateway:state": { input: z.void(), output: GatewayState },
   "gateway:connection": { input: z.void(), output: GatewayConnection },
   "gateway:setPort": { input: z.object({ port: GatewayPort }), output: z.void() },
-  "gateway:regenerateToken": { input: z.void(), output: GatewayConnection }
+  "gateway:regenerateToken": { input: z.void(), output: GatewayConnection },
+
+  "clients:list": { input: z.void(), output: z.array(ClientState) },
+  "clients:connect": { input: ClientTarget, output: ClientState },
+  "clients:disconnect": { input: ClientTarget, output: ClientState },
+  "clients:reveal": { input: ClientTarget.extend({ target: z.enum(["config", "backups"]) }), output: z.void() }
 } as const;
 
 export type IpcChannel = keyof typeof ipc;
@@ -35,7 +42,8 @@ export const ipcEvents = {
   "servers:changed": z.void(),
   "servers:state": ServerState,
   "servers:log": LogLine,
-  "gateway:state": GatewayState
+  "gateway:state": GatewayState,
+  "clients:changed": z.void()
 } as const;
 
 export type IpcEvent = keyof typeof ipcEvents;

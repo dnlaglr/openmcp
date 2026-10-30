@@ -3,6 +3,7 @@ import { app, autoUpdater, session, type BrowserWindow } from "electron";
 import { getServer, listServers, pruneActivity, recordActivity } from "@openmcp/database";
 
 import { registerGatewayHandlers } from "./gateway/handlers";
+import { registerClientHandlers } from "./clients/handlers";
 import { registerServerHandlers } from "./servers/handlers";
 import { createSupervisor } from "./servers/supervisor";
 import { createGatewayServer } from "./gateway/server";
@@ -91,7 +92,10 @@ if (!app.requestSingleInstanceLock()) {
         record: (row) => recordActivity(db, row),
         version: app.getVersion()
       }),
-      onState: (state) => emit("gateway:state", state)
+      onState: (state) => {
+        emit("gateway:state", state);
+        if (state.status === "running") void clients.sync();
+      }
     });
 
     const pruneOldActivity = () => pruneActivity(db, new Date(Date.now() - ACTIVITY_RETENTION_MS));
@@ -115,6 +119,7 @@ if (!app.requestSingleInstanceLock()) {
     handle("app:version", () => app.getVersion());
     registerServerHandlers(db, supervisor);
     registerGatewayHandlers(gateway);
+    const clients = registerClientHandlers(gateway);
     void gateway.start();
 
     getMainWindow();

@@ -5,7 +5,11 @@ import { join } from "node:path";
 
 const appDir = join(__dirname, "../..");
 
-export const launch = (dataDir: string) => electron.launch({ args: [appDir, `--user-data-dir=${dataDir}`] });
+export const launch = (dataDir: string, env: Record<string, string> = {}) =>
+  electron.launch({
+    args: [appDir, `--user-data-dir=${dataDir}`],
+    env: { ...(process.env as Record<string, string>), ...env }
+  });
 
 export async function withDataDir(run: (dataDir: string) => Promise<void>) {
   const dataDir = mkdtempSync(join(tmpdir(), "openmcp-e2e-"));
