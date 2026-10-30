@@ -1,5 +1,5 @@
+import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { _electron as electron } from "@playwright/test";
-import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -10,6 +10,11 @@ export const launch = (dataDir: string, env: Record<string, string> = {}) =>
     args: [appDir, `--user-data-dir=${dataDir}`],
     env: { ...(process.env as Record<string, string>), ...env }
   });
+
+export function databaseContents(dataDir: string) {
+  const files = ["openmcp.db", "openmcp.db-wal"].map((file) => join(`${dataDir}-dev`, file)).filter(existsSync);
+  return files.map((file) => readFileSync(file, "latin1")).join("");
+}
 
 export async function withDataDir(run: (dataDir: string) => Promise<void>) {
   const dataDir = mkdtempSync(join(tmpdir(), "openmcp-e2e-"));

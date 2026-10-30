@@ -1,18 +1,15 @@
 import { _electron as electron, expect, test, type Page } from "@playwright/test";
-import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+
+import { databaseContents } from "./app";
 
 const appDir = join(__dirname, "../..");
 const fixture = join(__dirname, "fixtures/stdioServer.mts");
 const secretValue = "e2e-ui-secret-value";
 
 const launch = (dataDir: string) => electron.launch({ args: [appDir, `--user-data-dir=${dataDir}`] });
-
-function databaseContents(dataDir: string) {
-  const files = ["openmcp.db", "openmcp.db-wal"].map((file) => join(`${dataDir}-dev`, file)).filter(existsSync);
-  return files.map((file) => readFileSync(file, "latin1")).join("");
-}
 
 async function withDataDir(run: (dataDir: string) => Promise<void>) {
   const dataDir = mkdtempSync(join(tmpdir(), "openmcp-e2e-"));
