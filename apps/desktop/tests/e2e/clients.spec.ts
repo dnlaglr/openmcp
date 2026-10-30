@@ -32,4 +32,3 @@ test("connects and disconnects Claude Code through its config file", () =>
 
     await app.close();
   }));
-  
