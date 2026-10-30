@@ -56,7 +56,7 @@ export async function listen({ port, token, factory }: ListenOptions) {
     if (id) return sessions.get(id)?.transport.handleRequest(request) ?? jsonRpcError(404, "Session not found");
 
     const server = factory();
-    const transport = new WebStandardStreamableHTTPServerTransport({
+    const transport: WebStandardStreamableHTTPServerTransport = new WebStandardStreamableHTTPServerTransport({
       sessionIdGenerator: randomUUID,
       onsessioninitialized: (sessionId) => remember(sessionId, { transport, server }),
       onsessionclosed: (sessionId) => void sessions.delete(sessionId)

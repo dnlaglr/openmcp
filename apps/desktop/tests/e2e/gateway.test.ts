@@ -5,8 +5,8 @@ import { randomUUID } from "node:crypto";
 
 import { createSupervisor, type Supervisor } from "../../src/main/servers/supervisor";
 import { createGatewayServer } from "../../src/main/gateway/server";
-import { stdioConnector } from "../../src/main/servers/connection";
 import { listen, type Listener } from "../../src/main/gateway/http";
+import { stdioConnector } from "../../src/main/servers/connection";
 import { createCatalog } from "../../src/main/gateway/catalog";
 
 const fixture = fileURLToPath(new URL("./fixtures/stdioServer.mts", import.meta.url));
@@ -60,7 +60,9 @@ async function connect(url: URL, era: "legacy" | "modern", changes: string[][] =
     { name: `${era}-agent`, version: "1.0.0" },
     {
       versionNegotiation: era === "modern" ? { mode: { pin: "2026-07-28" } } : undefined,
-      listChanged: { tools: { onChanged: (_error, tools) => void (tools && changes.push(tools.map((tool) => tool.name))) } }
+      listChanged: {
+        tools: { onChanged: (_error, tools) => void (tools && changes.push(tools.map((tool) => tool.name))) }
+      }
     }
   );
 
