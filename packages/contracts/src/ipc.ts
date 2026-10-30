@@ -1,9 +1,9 @@
 import { z } from "zod";
 
 import { GatewayConnection, GatewayPort, GatewayState } from "./gateway";
-import { ClientId, ClientState } from "./clients";
 import { LogLine, ServerDetails, ServerState } from "./runtime";
 import { InstalledServer, NewCustomServer } from "./server";
+import { ClientId, ClientState } from "./clients";
 
 const ServerId = z.object({ id: z.uuid() });
 const ClientTarget = z.object({ id: ClientId });
