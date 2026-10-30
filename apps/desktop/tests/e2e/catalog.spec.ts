@@ -1,13 +1,21 @@
+import { expect, test, type ElectronApplication } from "@playwright/test";
 import { createServer, type Server } from "node:http";
-import { findCredentials } from "@napi-rs/keyring";
-import { expect, test } from "@playwright/test";
+import type * as keyring from "@napi-rs/keyring";
 import type { AddressInfo } from "node:net";
 import { randomUUID } from "node:crypto";
 
 import { databaseContents, launch, withDataDir } from "./app";
 
 const secretValue = `e2e-catalog-${randomUUID()}`;
-const inKeychain = () => findCredentials("openmcp").some((credential) => credential.password === secretValue);
+
+// Read inside the app that wrote the secret: macOS prompts any other process for keychain access, hanging CI.
+const inKeychain = (electronApp: ElectronApplication) =>
+  electronApp.evaluate(({ app }, secret) => {
+    const { createRequire } = process.getBuiltinModule("node:module");
+    const { findCredentials }: typeof keyring = createRequire(`${app.getAppPath()}/package.json`)("@napi-rs/keyring");
+
+    return findCredentials("openmcp").some((credential) => credential.password === secret);
+  }, secretValue);
 
 // A path identifier makes npx fail locally, so the test never downloads or runs a package from npm.
 const entry = (name: string) => ({
@@ -80,12 +88,12 @@ test("installs a registry server with its secret in the keychain and opens it in
     await expect(page.getByRole("cell", { name: "Catalog", exact: true })).toBeVisible();
     await expect(page.getByRole("cell", { name: "npx -y ./openmcp-e2e-missing@1.0.0" })).toBeVisible();
     expect(databaseContents(dataDir)).not.toContain(secretValue);
-    expect(inKeychain()).toBe(true);
+    expect(await inKeychain(app)).toBe(true);
 
     await page.getByRole("button", { name: "Remove e2e" }).click();
     await page.getByRole("alertdialog").getByRole("button", { name: "Remove" }).click();
     await expect(page.getByText("No servers yet")).toBeVisible();
-    expect(inKeychain()).toBe(false);
+    expect(await inKeychain(app)).toBe(false);
     await app.close();
     registry.server.close();
   }));
