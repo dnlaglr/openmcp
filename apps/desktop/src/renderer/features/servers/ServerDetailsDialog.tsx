@@ -1,5 +1,4 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { cn } from "cn";
 
 import { commandLine, type InstalledServer, type ServerDetails, type ServerState } from "@openmcp/contracts";
 
@@ -12,6 +11,7 @@ import { ServerControls } from "./ServerControls";
 import { ipcErrorMessage } from "@/lib/ipcError";
 import { useServerDetails } from "./useServers";
 import { ServerLogs } from "./ServerLogs";
+import { Stat } from "@/components/Stat";
 
 type Tab = { value: string; label: string; count?: number; content: ReactNode };
 
@@ -123,15 +123,6 @@ function ServerStats({ state, details }: { state: ServerState; details?: ServerD
       <Stat label="Restarts">{state.restarts}</Stat>
       <Stat label="PID">{state.pid ?? "—"}</Stat>
     </dl>
-  );
-}
-
-function Stat({ label, className, children }: { label: string; className?: string; children: ReactNode }) {
-  return (
-    <div className={cn("min-w-0", className)}>
-      <dt className="text-xs text-muted-foreground">{label}</dt>
-      <dd className="truncate font-medium tabular-nums">{children}</dd>
-    </div>
   );
 }
 

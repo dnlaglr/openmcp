@@ -1,7 +1,8 @@
 import { app, autoUpdater, session, type BrowserWindow } from "electron";
 
-import { getServer, listServers, pruneActivity, recordActivity } from "@openmcp/database";
+import { getServer, listServers, pruneActivity } from "@openmcp/database";
 
+import { registerActivityHandlers } from "./activity/handlers";
 import { registerGatewayHandlers } from "./gateway/handlers";
 import { registerClientHandlers } from "./clients/handlers";
 import { registerServerHandlers } from "./servers/handlers";
@@ -89,7 +90,7 @@ if (!app.requestSingleInstanceLock()) {
       factory: createGatewayServer({
         catalog,
         supervisor,
-        record: (row) => recordActivity(db, row),
+        record: (row) => activity.record(row),
         version: app.getVersion()
       }),
       onState: (state) => {
@@ -117,6 +118,7 @@ if (!app.requestSingleInstanceLock()) {
     });
 
     handle("app:version", () => app.getVersion());
+    const activity = registerActivityHandlers(db);
     registerServerHandlers(db, supervisor);
     registerGatewayHandlers(gateway);
     const clients = registerClientHandlers(gateway);

@@ -1,29 +1,10 @@
-import { _electron as electron, expect, test, type Page } from "@playwright/test";
-import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { expect, test, type Page } from "@playwright/test";
 import { join } from "node:path";
 
-const appDir = join(__dirname, "../..");
+import { databaseContents, launch, withDataDir } from "./app";
+
 const fixture = join(__dirname, "fixtures/stdioServer.mts");
 const secretValue = "e2e-ui-secret-value";
-
-const launch = (dataDir: string) => electron.launch({ args: [appDir, `--user-data-dir=${dataDir}`] });
-
-function databaseContents(dataDir: string) {
-  const files = ["openmcp.db", "openmcp.db-wal"].map((file) => join(`${dataDir}-dev`, file)).filter(existsSync);
-  return files.map((file) => readFileSync(file, "latin1")).join("");
-}
-
-async function withDataDir(run: (dataDir: string) => Promise<void>) {
-  const dataDir = mkdtempSync(join(tmpdir(), "openmcp-e2e-"));
-
-  try {
-    await run(dataDir);
-  } finally {
-    rmSync(dataDir, { recursive: true, force: true });
-    rmSync(`${dataDir}-dev`, { recursive: true, force: true });
-  }
-}
 
 async function fillAddServerDialog(page: Page, server: { name: string; command: string; args: string }) {
   await page.getByRole("button", { name: "Add Server" }).first().click();
