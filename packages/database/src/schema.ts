@@ -1,4 +1,4 @@
-import { check, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { check, index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 import { sql } from "drizzle-orm";
 
 import type { LaunchSpec } from "@openmcp/contracts";
@@ -45,3 +45,27 @@ export const installedServers = sqliteTable(
 
 export type InstalledServerRow = typeof installedServers.$inferSelect;
 export type NewInstalledServer = typeof installedServers.$inferInsert;
+
+export const activity = sqliteTable(
+  "activity",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    at: integer("at", { mode: "timestamp_ms" }).notNull(),
+    serverId: text("server_id"),
+    serverName: text("server_name"),
+    kind: text("kind", { enum: ["tool", "prompt", "resource"] }).notNull(),
+    name: text("name").notNull(),
+    client: text("client"),
+    durationMs: integer("duration_ms").notNull(),
+    outcome: text("outcome", { enum: ["ok", "tool_error", "error", "unavailable"] }).notNull(),
+    error: text("error")
+  },
+  (table) => [
+    index("activity_at").on(table.at),
+    check("kind_values", sql`${table.kind} in ('tool', 'prompt', 'resource')`),
+    check("outcome_values", sql`${table.outcome} in ('ok', 'tool_error', 'error', 'unavailable')`)
+  ]
+);
+
+export type ActivityRow = typeof activity.$inferSelect;
+export type NewActivity = typeof activity.$inferInsert;
