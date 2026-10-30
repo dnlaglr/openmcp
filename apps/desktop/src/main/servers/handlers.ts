@@ -20,8 +20,7 @@ export function registerServerHandlers(db: Database, supervisor: Supervisor) {
     const server = editServer(db, input);
     emit("servers:changed");
 
-    const status = supervisor.states().find((state) => state.id === server.id)?.status;
-    if (status === "starting" || status === "running") void supervisor.restart(server.id);
+    void supervisor.restartIfActive(server.id);
     return server;
   });
 
