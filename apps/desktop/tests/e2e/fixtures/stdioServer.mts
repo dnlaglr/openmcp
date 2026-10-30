@@ -1,6 +1,10 @@
 import { createInterface } from "node:readline";
 
-type Message = { id?: number | string; method?: string; params?: { protocolVersion?: string; cursor?: string } };
+type Message = {
+  id?: number | string;
+  method?: string;
+  params?: { protocolVersion?: string; cursor?: string; name?: string; arguments?: { message?: string } };
+};
 
 const write = (message: object) => process.stdout.write(`${JSON.stringify({ jsonrpc: "2.0", ...message })}\n`);
 
@@ -26,6 +30,7 @@ const handlers: Record<string, (params: Message["params"]) => unknown> = {
     params?.cursor
       ? { tools: [{ name: process.env.FIXTURE_TOOL ?? "add", inputSchema: { type: "object" } }] }
       : { tools: [echo], nextCursor: "page-2" },
+  "tools/call": (params) => ({ content: [{ type: "text", text: params?.arguments?.message ?? "" }] }),
   "resources/list": () => ({ resources: [{ uri: "fixture://readme", name: "readme", mimeType: "text/plain" }] }),
   ping: () => ({})
 };

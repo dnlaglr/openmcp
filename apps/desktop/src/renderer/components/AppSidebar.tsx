@@ -56,7 +56,7 @@ export function AppSidebar(props: NavProps) {
 
       <SidebarFooter>
         <SidebarSeparator />
-        <GatewayStatus />
+        <GatewayStatus onOpen={() => props.onSelect("settings")} />
         <NavMenu items={footerTabs} {...props} />
       </SidebarFooter>
 

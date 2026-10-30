@@ -146,6 +146,10 @@ export function createSupervisor({
     stopAll: () => Promise.all([...entries.keys()].map(stop)),
     states: () => [...entries.values()].map((entry) => entry.state),
     logs: (id: string) => entries.get(id)?.logs ?? [],
+    note: (id: string, text: string) => {
+      const entry = entries.get(id);
+      if (entry) log(entry, "openmcp", text);
+    },
     client: (id: string) => entries.get(id)?.connection?.client
   };
 }

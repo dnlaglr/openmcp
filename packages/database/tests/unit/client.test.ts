@@ -12,7 +12,7 @@ test("applies every migration to a fresh database", () => {
     .prepare("select name from sqlite_master where type = 'table'")
     .all()
     .map((row) => row.name);
-  expect(tables).toEqual(expect.arrayContaining(["settings", "installed_servers"]));
+  expect(tables).toEqual(expect.arrayContaining(["settings", "installed_servers", "activity"]));
 });
 
 test("enables foreign key enforcement", () => {

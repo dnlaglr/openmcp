@@ -1,23 +1,41 @@
-import { app, session, type BrowserWindow } from "electron";
+import { app, autoUpdater, session, type BrowserWindow } from "electron";
 
-import { listServers } from "@openmcp/database";
+import { getServer, listServers, pruneActivity, recordActivity } from "@openmcp/database";
 
+import { registerGatewayHandlers } from "./gateway/handlers";
 import { registerServerHandlers } from "./servers/handlers";
 import { createSupervisor } from "./servers/supervisor";
+import { createGatewayServer } from "./gateway/server";
 import { stdioConnector } from "./servers/connection";
+import { createCatalog } from "./gateway/catalog";
+import { createGateway } from "./gateway/gateway";
 import { launchFor } from "./servers/servers";
 import { createMainWindow } from "./windows";
 import { updateOnLaunch } from "./updater";
 import { openDatabase } from "./database";
 import { emit, handle } from "./ipc";
+import { createTray } from "./tray";
 
 const ALLOWED_PERMISSIONS = new Set(["clipboard-sanitized-write"]);
+const DAY_MS = 24 * 60 * 60 * 1000;
+const ACTIVITY_RETENTION_MS = 30 * DAY_MS;
 
 let mainWindow: BrowserWindow | null = null;
 let launched = false;
+let quitting = false;
 
 function getMainWindow() {
-  if (!mainWindow || mainWindow.isDestroyed()) mainWindow = createMainWindow();
+  if (!mainWindow || mainWindow.isDestroyed()) {
+    const window = createMainWindow();
+    window.on("close", (event) => {
+      if (quitting) return;
+
+      event.preventDefault();
+      window.hide();
+    });
+    mainWindow = window;
+  }
+
   return mainWindow;
 }
 
@@ -38,8 +56,9 @@ if (!app.requestSingleInstanceLock()) {
 } else {
   app.on("second-instance", showMainWindow);
   app.on("activate", showMainWindow);
-  app.on("window-all-closed", () => {
-    if (process.platform !== "darwin") app.quit();
+
+  autoUpdater.on("before-quit-for-update", () => {
+    quitting = true;
   });
 
   void app.whenReady().then(async () => {
@@ -53,22 +72,53 @@ if (!app.requestSingleInstanceLock()) {
     const supervisor = createSupervisor({
       connect: stdioConnector(app.getVersion()),
       resolve: (id) => launchFor(db, id),
-      onState: (state) => emit("servers:state", state),
+      onState: (state) => {
+        emit("servers:state", state);
+        void catalog.sync(state);
+      },
       onLog: (line) => emit("servers:log", line)
     });
+    const catalog = createCatalog({
+      supervisor,
+      nameOf: (id) => getServer(db, id)?.name,
+      onChange: (kinds) => gateway.notify(kinds)
+    });
+    const gateway = createGateway({
+      db,
+      factory: createGatewayServer({
+        catalog,
+        supervisor,
+        record: (row) => recordActivity(db, row),
+        version: app.getVersion()
+      }),
+      onState: (state) => emit("gateway:state", state)
+    });
 
-    let quitting = false;
+    const pruneOldActivity = () => pruneActivity(db, new Date(Date.now() - ACTIVITY_RETENTION_MS));
+    pruneOldActivity();
+    setInterval(pruneOldActivity, DAY_MS);
+
+    let shuttingDown = false;
     app.on("before-quit", (event) => {
-      if (quitting) return;
-
       quitting = true;
+      if (shuttingDown) return;
+
+      shuttingDown = true;
       event.preventDefault();
-      void supervisor.stopAll().finally(() => app.quit());
+      void gateway
+        .close()
+        .catch((error: unknown) => console.error("Couldn't close the gateway", error))
+        .then(() => supervisor.stopAll())
+        .finally(() => app.quit());
     });
 
     handle("app:version", () => app.getVersion());
     registerServerHandlers(db, supervisor);
+    registerGatewayHandlers(gateway);
+    void gateway.start();
+
     getMainWindow();
+    createTray({ show: showMainWindow, quit: () => app.quit() });
 
     await updateOnLaunch();
     launched = true;

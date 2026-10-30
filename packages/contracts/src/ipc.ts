@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { GatewayConnection, GatewayPort, GatewayState } from "./gateway";
 import { LogLine, ServerDetails, ServerState } from "./runtime";
 import { InstalledServer, NewCustomServer } from "./server";
 
@@ -17,7 +18,12 @@ export const ipc = {
   "servers:restart": { input: ServerId, output: z.void() },
   "servers:states": { input: z.void(), output: z.array(ServerState) },
   "servers:logs": { input: ServerId, output: z.array(LogLine) },
-  "servers:details": { input: ServerId, output: ServerDetails }
+  "servers:details": { input: ServerId, output: ServerDetails },
+
+  "gateway:state": { input: z.void(), output: GatewayState },
+  "gateway:connection": { input: z.void(), output: GatewayConnection },
+  "gateway:setPort": { input: z.object({ port: GatewayPort }), output: z.void() },
+  "gateway:regenerateToken": { input: z.void(), output: GatewayConnection }
 } as const;
 
 export type IpcChannel = keyof typeof ipc;
@@ -28,7 +34,8 @@ export type IpcOutput<C extends IpcChannel> = z.output<(typeof ipc)[C]["output"]
 export const ipcEvents = {
   "servers:changed": z.void(),
   "servers:state": ServerState,
-  "servers:log": LogLine
+  "servers:log": LogLine,
+  "gateway:state": GatewayState
 } as const;
 
 export type IpcEvent = keyof typeof ipcEvents;
