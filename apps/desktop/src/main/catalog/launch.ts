@@ -64,7 +64,7 @@ function template(id: string, value: string, variables: Variables, secret: boole
   };
 }
 
-// ponytail: isRepeated arguments take one value; add an "add another" control if the 49 servers using it matter.
+// isRepeated arguments take one value; add an "add another" control if the 49 servers using it matter.
 function argument(arg: RegistryArgument, id: string): Piece<string[]> {
   const flag = arg.type === "named" && arg.name ? [arg.name] : [];
   const emit = (value: string | null) => (value ? [...flag, value] : []);

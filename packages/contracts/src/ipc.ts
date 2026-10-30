@@ -2,9 +2,9 @@ import { z } from "zod";
 
 import { ActivityEntry, ActivityQuery, ActivityScope, ActivitySummary } from "./activity";
 import { CatalogEntry, CatalogInstall, CatalogResults, CatalogSearch } from "./catalog";
+import { InstalledServer, NewCustomServer, ServerUpdate } from "./server";
 import { GatewayConnection, GatewayPort, GatewayState } from "./gateway";
 import { LogLine, ServerDetails, ServerState } from "./runtime";
-import { InstalledServer, NewCustomServer } from "./server";
 import { ClientId, ClientState } from "./clients";
 
 const ServerId = z.object({ id: z.uuid() });
@@ -15,6 +15,7 @@ export const ipc = {
 
   "servers:list": { input: z.void(), output: z.array(InstalledServer) },
   "servers:addCustom": { input: NewCustomServer, output: InstalledServer },
+  "servers:update": { input: ServerUpdate, output: InstalledServer },
   "servers:remove": { input: ServerId, output: z.void() },
 
   "servers:start": { input: ServerId, output: z.void() },

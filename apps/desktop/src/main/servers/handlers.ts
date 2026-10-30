@@ -1,6 +1,6 @@
 import { listServers, type Database } from "@openmcp/database";
 
-import { addCustomServer, deleteServer } from "./servers";
+import { addCustomServer, deleteServer, editServer } from "./servers";
 import type { Supervisor } from "./supervisor";
 import { describeServer } from "./connection";
 import { emit, handle } from "../ipc";
@@ -13,6 +13,15 @@ export function registerServerHandlers(db: Database, supervisor: Supervisor) {
     emit("servers:changed");
 
     if (server.autostart) void supervisor.start(server.id);
+    return server;
+  });
+
+  handle("servers:update", (input) => {
+    const server = editServer(db, input);
+    emit("servers:changed");
+
+    const status = supervisor.states().find((state) => state.id === server.id)?.status;
+    if (status === "starting" || status === "running") void supervisor.restart(server.id);
     return server;
   });
 

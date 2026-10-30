@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { LaunchSpec, NewCustomServer, ServerName } from "../../src";
+import { LaunchSpec, NewCustomServer, ServerName, ServerUpdate } from "../../src";
 
 describe("NewCustomServer", () => {
   it("fills in defaults and trims the command", () => {
@@ -58,5 +58,23 @@ describe("ServerName", () => {
   it("rejects names that break TOML bare keys", () => {
     expect(ServerName.safeParse("my-server_1").success).toBe(true);
     expect(ServerName.safeParse("my.server").success).toBe(false);
+  });
+});
+
+describe("ServerUpdate", () => {
+  const base = { id: "0b6e8d6c-3d1a-4c5e-9f2a-1b2c3d4e5f60", name: "x", command: "npx" };
+
+  it("defaults keepSecrets to empty", () => {
+    expect(ServerUpdate.parse(base).keepSecrets).toEqual({});
+  });
+
+  it("rejects a kept secret whose name is also a plain variable, flagging the secrets field", () => {
+    const result = ServerUpdate.safeParse({ ...base, env: { API_KEY: "a" }, keepSecrets: { API_KEY: "API_KEY" } });
+
+    expect(result.error?.issues.map((issue) => issue.path)).toEqual([["secrets"]]);
+  });
+
+  it("rejects a kept name that isn't a usable env var name", () => {
+    expect(ServerUpdate.safeParse({ ...base, keepSecrets: { "API-KEY": "API_KEY" } }).success).toBe(false);
   });
 });

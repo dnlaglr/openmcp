@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PromptList, ResourceList, ToolList } from "./ServerCapabilities";
 import { formatTime, formatUptime } from "./serverDetails";
 import { ServerStatusBadge } from "./ServerStatusBadge";
+import { EditServerButton } from "./EditServerButton";
 import { ServerControls } from "./ServerControls";
 import { ipcErrorMessage } from "@/lib/ipcError";
 import { useServerDetails } from "./useServers";
@@ -41,8 +42,9 @@ export function ServerDetailsDialog({
           <div className="flex items-center gap-3">
             <DialogTitle>{server.name}</DialogTitle>
             <ServerStatusBadge state={state} />
-            <div className="ml-auto">
+            <div className="ml-auto flex items-center">
               <ServerControls server={server} state={state} />
+              <EditServerButton server={server} state={state} />
             </div>
           </div>
           <DialogDescription className="truncate font-mono text-xs">{commandLine(server.launch)}</DialogDescription>

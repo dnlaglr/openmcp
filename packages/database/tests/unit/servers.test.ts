@@ -1,4 +1,4 @@
-import { beforeEach, expect, test } from "vitest";
+import { beforeEach, expect, test, vi } from "vitest";
 
 import {
   addServer,
@@ -7,6 +7,7 @@ import {
   getServer,
   listServers,
   removeServer,
+  updateServer,
   type Database
 } from "../../src";
 
@@ -51,4 +52,22 @@ test("gets a server by id, or undefined when it doesn't exist", () => {
 
   expect(getServer(db, server.id)).toEqual(server);
   expect(getServer(db, crypto.randomUUID())).toBeUndefined();
+});
+
+test("updates a server and bumps updatedAt, or returns undefined for an unknown id", () => {
+  vi.useFakeTimers({ now: new Date("2026-10-01T00:00:00Z") });
+  const server = addServer(db, { name: "test-server", source: "custom", launch });
+
+  vi.setSystemTime(new Date("2026-10-02T00:00:00Z"));
+  const updated = updateServer(db, server.id, { name: "renamed", autostart: true });
+  vi.useRealTimers();
+
+  expect(updated).toEqual({
+    ...server,
+    name: "renamed",
+    autostart: true,
+    updatedAt: new Date("2026-10-02T00:00:00Z")
+  });
+  expect(getServer(db, server.id)).toEqual(updated);
+  expect(updateServer(db, crypto.randomUUID(), { name: "ghost" })).toBeUndefined();
 });
