@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { ActivityEntry, ActivityQuery, ActivityScope, ActivitySummary } from "./activity";
 import { GatewayConnection, GatewayPort, GatewayState } from "./gateway";
 import { LogLine, ServerDetails, ServerState } from "./runtime";
 import { InstalledServer, NewCustomServer } from "./server";
@@ -30,7 +31,10 @@ export const ipc = {
   "clients:list": { input: z.void(), output: z.array(ClientState) },
   "clients:connect": { input: ClientTarget, output: ClientState },
   "clients:disconnect": { input: ClientTarget, output: ClientState },
-  "clients:reveal": { input: ClientTarget.extend({ target: z.enum(["config", "backups"]) }), output: z.void() }
+  "clients:reveal": { input: ClientTarget.extend({ target: z.enum(["config", "backups"]) }), output: z.void() },
+
+  "activity:summary": { input: ActivityScope, output: ActivitySummary },
+  "activity:list": { input: ActivityQuery, output: z.array(ActivityEntry) }
 } as const;
 
 export type IpcChannel = keyof typeof ipc;
@@ -43,7 +47,8 @@ export const ipcEvents = {
   "servers:state": ServerState,
   "servers:log": LogLine,
   "gateway:state": GatewayState,
-  "clients:changed": z.void()
+  "clients:changed": z.void(),
+  "activity:changed": z.void()
 } as const;
 
 export type IpcEvent = keyof typeof ipcEvents;
