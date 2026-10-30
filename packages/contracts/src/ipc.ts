@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { ActivityEntry, ActivityQuery, ActivityScope, ActivitySummary } from "./activity";
+import { CatalogEntry, CatalogInstall, CatalogResults, CatalogSearch } from "./catalog";
 import { GatewayConnection, GatewayPort, GatewayState } from "./gateway";
 import { LogLine, ServerDetails, ServerState } from "./runtime";
 import { InstalledServer, NewCustomServer } from "./server";
@@ -22,6 +23,10 @@ export const ipc = {
   "servers:states": { input: z.void(), output: z.array(ServerState) },
   "servers:logs": { input: ServerId, output: z.array(LogLine) },
   "servers:details": { input: ServerId, output: ServerDetails },
+
+  "catalog:popular": { input: z.void(), output: z.array(CatalogEntry) },
+  "catalog:search": { input: CatalogSearch, output: CatalogResults },
+  "catalog:install": { input: CatalogInstall, output: InstalledServer },
 
   "gateway:state": { input: z.void(), output: GatewayState },
   "gateway:connection": { input: z.void(), output: GatewayConnection },
