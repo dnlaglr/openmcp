@@ -4,6 +4,7 @@ import {
   type CatalogEntry,
   type CatalogInput,
   type CatalogRunner,
+  type LaunchSpec,
   type RegistryArgument,
   type RegistryEntry,
   type RegistryEnvVar,
@@ -14,7 +15,12 @@ import {
 
 export type Values = Record<string, string>;
 export type BuiltLaunch = { command: CatalogRunner; args: string[]; env: Values; secrets: Values };
-export type Plan = { runner: CatalogRunner; inputs: CatalogInput[]; build: (values: Values) => BuiltLaunch };
+export type Plan = {
+  runner: CatalogRunner;
+  package: string;
+  inputs: CatalogInput[];
+  build: (values: Values) => BuiltLaunch;
+};
 
 type Piece<T> = { inputs: CatalogInput[]; render: (values: Values) => T };
 type EnvValue = { name: string; value: string; secret: boolean };
@@ -134,8 +140,11 @@ export function planFor(pkg: RegistryPackage): Plan | null {
     else (index < runtimeArgs.length ? runtime : trailing).push(argument(arg, `arg:${index}`));
   }
 
+  const pinned = target(pkg, runner);
+
   return {
     runner,
+    package: pinned,
     inputs: [...env, ...runtime, ...trailing].flatMap((piece) => piece.inputs),
     build: (values) => {
       const set = env.map((piece) => piece.render(values)).filter((value) => value !== null);
@@ -148,7 +157,7 @@ export function planFor(pkg: RegistryPackage): Plan | null {
           ...heads[runner],
           ...runtime.flatMap((piece) => piece.render(values)),
           ...(runner === "docker" ? set.flatMap(({ name }) => ["-e", name]) : []),
-          target(pkg, runner),
+          pinned,
           ...trailing.flatMap((piece) => piece.render(values))
         ],
         env: pick(false),
@@ -165,6 +174,28 @@ export function choosePlan(server: RegistryServer): Plan | null {
   }
 
   return null;
+}
+
+// Every input filled in, so an added, renamed or moved input changes the built launch.
+const filledLaunch = (plan: Plan) =>
+  plan.build(
+    Object.fromEntries(plan.inputs.map((input) => [input.id, input.kind === "flag" ? "true" : `‹${input.id}›`]))
+  );
+
+function settingsOf(plan: Plan) {
+  const { args, ...launch } = filledLaunch(plan);
+  const inputs = plan.inputs.map((input) => ({ ...input, description: null, placeholder: null }));
+
+  return JSON.stringify({ inputs, launch, args: args.map((arg) => (arg === plan.package ? "" : arg)) });
+}
+
+// Moves a stored launch to another version by swapping only its pinned package, so every value, manual edit and
+// secret stays. Null when the versions differ in anything else or the launch no longer pins the old package.
+export function swapPackage(launch: LaunchSpec, from: Plan | null, to: Plan): LaunchSpec | null {
+  if (!from || launch.command !== to.runner || settingsOf(from) !== settingsOf(to)) return null;
+  if (launch.args.filter((arg) => arg === from.package).length !== 1) return null;
+
+  return { ...launch, args: launch.args.map((arg) => (arg === from.package ? to.package : arg)) };
 }
 
 export function defaultServerName(registryName: string) {
