@@ -1,6 +1,7 @@
-import { NewCustomServer, type IpcInput } from "@openmcp/contracts";
+import { NewCustomServer, type InstalledServer, type IpcInput } from "@openmcp/contracts";
 
-export type EnvRow = { id: string; key: string; value: string; secret: boolean };
+// `stored` is the keychain name a secret row was loaded with. Stored values never reach the renderer.
+export type EnvRow = { id: string; key: string; value: string; secret: boolean; stored: string | null };
 
 export type ServerForm = {
   name: string;
@@ -16,10 +17,37 @@ export type ParsedServerForm = { success: true; data: NewCustomServer } | { succ
 
 export const emptyServerForm: ServerForm = { name: "", command: "", args: "", env: [], autostart: false };
 
-export const newEnvRow = (): EnvRow => ({ id: crypto.randomUUID(), key: "", value: "", secret: false });
+export const newEnvRow = (): EnvRow => ({ id: crypto.randomUUID(), key: "", value: "", secret: false, stored: null });
+
+const isKept = (row: EnvRow): row is EnvRow & { stored: string } => row.secret && row.stored !== null && !row.value;
+
+const unshownSecret = (rows: EnvRow[]) =>
+  rows.find((row) => row.key.trim() && row.stored !== null && !row.secret && !row.value);
+
+export function serverFormFrom({ name, launch, autostart }: InstalledServer): ServerForm {
+  return {
+    name,
+    command: launch.command,
+    args: launch.args.join("\n"),
+    env: [
+      ...Object.entries(launch.env).map(([key, value]) => ({ ...newEnvRow(), key, value })),
+      ...launch.secretEnv.map((key) => ({ ...newEnvRow(), key, secret: true, stored: key }))
+    ],
+    autostart
+  };
+}
+
+export function keptSecrets(form: ServerForm): Record<string, string> {
+  return Object.fromEntries(
+    form.env
+      .filter(isKept)
+      .filter((row) => row.key.trim())
+      .map((row) => [row.key.trim(), row.stored])
+  );
+}
 
 export function toNewCustomServer(form: ServerForm): IpcInput<"servers:addCustom"> {
-  const rows = form.env.filter((row) => row.key.trim());
+  const rows = form.env.filter((row) => row.key.trim() && !isKept(row));
   const variables = (secret: boolean) =>
     Object.fromEntries(rows.filter((row) => row.secret === secret).map((row) => [row.key.trim(), row.value]));
 
@@ -52,11 +80,13 @@ function fieldErrors(issues: { path: PropertyKey[]; message: string }[]): Server
 export function parseServerForm(form: ServerForm): ParsedServerForm {
   const result = NewCustomServer.safeParse(toNewCustomServer(form));
   const duplicateNames = hasDuplicateNames(form.env);
+  const unshown = unshownSecret(form.env);
 
-  if (result.success && !duplicateNames) return { success: true, data: result.data };
+  if (result.success && !duplicateNames && !unshown) return { success: true, data: result.data };
 
   const errors = result.success ? {} : fieldErrors(result.error.issues);
   if (duplicateNames) errors.env ??= "Each variable name can only be used once";
+  if (unshown) errors.env ??= `Enter a value for ${unshown.key.trim()}. Stored secrets aren't shown.`;
 
   return { success: false, errors };
 }
