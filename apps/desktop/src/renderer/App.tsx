@@ -24,7 +24,7 @@ export function App() {
   return (
     <SidebarProvider>
       <AppSidebar current={page} onSelect={setPage} />
-      <SidebarInset className="p-6">
+      <SidebarInset className="min-w-0 p-6">
         <Current />
       </SidebarInset>
     </SidebarProvider>
