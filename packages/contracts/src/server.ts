@@ -40,21 +40,30 @@ export type InstalledServer = z.infer<typeof InstalledServer>;
 
 const isCommandLine = (command: string) => /^[^\\/\s]+\s/.test(command);
 
-export const NewCustomServer = z
-  .object({
-    name: ServerName,
-    command: z
-      .string()
-      .trim()
-      .min(1, "Enter a command")
-      .refine((command) => !isCommandLine(command), "Put arguments in the Arguments field, one per line"),
-    args: z.array(z.string()).default([]),
-    env: EnvMap.default({}),
-    secrets: EnvMap.default({}),
-    autostart: z.boolean().default(false)
-  })
-  .refine((server) => Object.keys(server.env).every((key) => !Object.hasOwn(server.secrets, key)), {
-    error: "A variable can't be both plain and secret",
-    path: ["secrets"]
-  });
+const ServerFields = z.object({
+  name: ServerName,
+  command: z
+    .string()
+    .trim()
+    .min(1, "Enter a command")
+    .refine((command) => !isCommandLine(command), "Put arguments in the Arguments field, one per line"),
+  args: z.array(z.string()).default([]),
+  env: EnvMap.default({}),
+  secrets: EnvMap.default({}),
+  autostart: z.boolean().default(false)
+});
+
+const distinctNames = ({ env, secrets, keepSecrets = {} }: { env: object; secrets: object; keepSecrets?: object }) => {
+  const names = [env, secrets, keepSecrets].flatMap((variables) => Object.keys(variables));
+  return new Set(names).size === names.length;
+};
+const plainOrSecret = { error: "A variable can't be both plain and secret", path: ["secrets"] };
+
+export const NewCustomServer = ServerFields.refine(distinctNames, plainOrSecret);
 export type NewCustomServer = z.infer<typeof NewCustomServer>;
+
+export const ServerUpdate = ServerFields.extend({
+  id: z.uuid(),
+  keepSecrets: z.record(EnvName, EnvName).default({})
+}).refine(distinctNames, plainOrSecret);
+export type ServerUpdate = z.infer<typeof ServerUpdate>;
