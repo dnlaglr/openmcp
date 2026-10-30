@@ -1,5 +1,4 @@
 import { useState, type FormEvent } from "react";
-import { Check, Copy } from "lucide-react";
 
 import { GatewayPort } from "@openmcp/contracts";
 
