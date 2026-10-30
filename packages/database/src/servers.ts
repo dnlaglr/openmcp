@@ -18,3 +18,11 @@ export function addServer(db: Database, server: NewInstalledServer): InstalledSe
 export function removeServer(db: Database, id: string): boolean {
   return db.delete(installedServers).where(eq(installedServers.id, id)).run().changes > 0;
 }
+
+export function updateServer(
+  db: Database,
+  id: string,
+  server: Partial<NewInstalledServer>
+): InstalledServerRow | undefined {
+  return db.update(installedServers).set(server).where(eq(installedServers.id, id)).returning().get();
+}

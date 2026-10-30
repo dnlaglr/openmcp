@@ -10,6 +10,7 @@ const timestamps = {
   updatedAt: integer("updated_at", { mode: "timestamp" })
     .notNull()
     .$defaultFn(() => new Date())
+    .$onUpdateFn(() => new Date())
 };
 
 export const settings = sqliteTable("settings", {
