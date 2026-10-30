@@ -48,7 +48,7 @@ const toEntries = (items: unknown[]) =>
 
 // Most registry entries are remote-only, so one registry page can hold few installable servers. Reading on until
 // there's a full page keeps the renderer's infinite scroll from stalling on a short page.
-// ponytail: gives up after MAX_PAGES (1,000 entries); a query that sparse returns a short page.
+// Gives up after MAX_PAGES (1,000 entries); a query that sparse returns a short page.
 export async function searchRegistry(query: string, cursor?: string): Promise<CatalogResults> {
   const entries: CatalogEntry[] = [];
   let next = cursor;
