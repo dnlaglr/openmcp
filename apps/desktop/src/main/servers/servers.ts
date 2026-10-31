@@ -9,7 +9,13 @@ import {
   type Database,
   type NewInstalledServer
 } from "@openmcp/database";
-import type { InstalledServer, NewCustomServer, ServerUpdate } from "@openmcp/contracts";
+import {
+  LaunchSpec,
+  secretNames,
+  type InstalledServer,
+  type NewCustomServer,
+  type ServerUpdate
+} from "@openmcp/contracts";
 import { deleteSecret, getSecret, setSecret } from "@openmcp/secrets";
 
 import type { Launch } from "./connection";
@@ -47,6 +53,21 @@ function checkName(db: Database, name: string, id?: string) {
   }
 }
 
+// Every save passes through here, so a Catalog value that builds a broken URL is caught like a typed one.
+function stored(launch: Launch, secrets: string[]): LaunchSpec {
+  const spec = launch.type === "stdio" ? { ...launch, secretEnv: secrets } : { ...launch, secretHeaders: secrets };
+  const parsed = LaunchSpec.safeParse(spec);
+  if (!parsed.success) throw new Error(parsed.error.issues[0].message);
+
+  return parsed.data;
+}
+
+function launchOf(fields: NewCustomServer | ServerUpdate): Launch {
+  return fields.type === "stdio"
+    ? { type: "stdio", command: fields.command, args: fields.args, env: fields.env }
+    : { type: "http", url: fields.url, headers: fields.headers };
+}
+
 export type NewServer = Pick<NewInstalledServer, "name" | "source" | "registryName" | "version" | "autostart"> & {
   launch: Launch;
   secrets: Record<string, string>;
@@ -54,11 +75,10 @@ export type NewServer = Pick<NewInstalledServer, "name" | "source" | "registryNa
 
 export function saveServer(db: Database, { launch, secrets, ...server }: NewServer): InstalledServer {
   checkName(db, server.name);
+  const spec = stored(launch, Object.keys(secrets));
 
   const id = randomUUID();
-  return withSecrets(id, secrets, () =>
-    addServer(db, { ...server, id, launch: { ...launch, secretEnv: Object.keys(secrets) } })
-  );
+  return withSecrets(id, secrets, () => addServer(db, { ...server, id, launch: spec }));
 }
 
 export function addCustomServer(db: Database, input: NewCustomServer): InstalledServer {
@@ -66,40 +86,42 @@ export function addCustomServer(db: Database, input: NewCustomServer): Installed
     name: input.name,
     source: "custom",
     autostart: input.autostart,
-    launch: { command: input.command, args: input.args, env: input.env },
+    launch: launchOf(input),
     secrets: input.secrets
   });
 }
 
-export function editServer(
-  db: Database,
-  { id, command, args, env, secrets, keepSecrets, ...server }: ServerUpdate & { version?: string }
-): InstalledServer {
+export function editServer(db: Database, input: ServerUpdate & { version?: string }): InstalledServer {
+  const { id, name, autostart, version, secrets, keepSecrets } = input;
   const current = getServer(db, id);
   if (!current) throw new Error("That server no longer exists.");
-  checkName(db, server.name, id);
+  if (current.launch.type !== input.type) throw new Error("A server's type can't change.");
+  checkName(db, name, id);
+
+  const storedNames = secretNames(current.launch);
 
   // Read every moved value before writing any, so swapping two names works.
   const writes = { ...secrets };
-  for (const [name, from] of Object.entries(keepSecrets)) {
-    if (!current.launch.secretEnv.includes(from)) throw new Error(`There's no stored secret named ${from}.`);
-    if (name === from) continue;
+  for (const [next, from] of Object.entries(keepSecrets)) {
+    if (!storedNames.includes(from)) throw new Error(`There's no stored secret named ${from}.`);
+    if (next === from) continue;
 
     const value = getSecret(secretKey(id, from));
     if (value === null) throw new Error(`The secret ${from} is missing from your keychain. Enter its value again.`);
-    writes[name] = value;
+    writes[next] = value;
   }
 
-  const secretEnv = [...Object.keys(secrets), ...Object.keys(keepSecrets)];
+  const names = [...Object.keys(secrets), ...Object.keys(keepSecrets)];
+  const launch = stored(launchOf(input), names);
   const saved = withSecrets(id, writes, () => {
-    const updated = updateServer(db, id, { ...server, launch: { command, args, env, secretEnv } });
+    const updated = updateServer(db, id, { name, autostart, ...(version === undefined ? {} : { version }), launch });
     if (!updated) throw new Error("That server no longer exists.");
     return updated;
   });
 
   deleteSecrets(
     id,
-    current.launch.secretEnv.filter((name) => !secretEnv.includes(name))
+    storedNames.filter((stale) => !names.includes(stale))
   );
   return saved;
 }
@@ -117,10 +139,12 @@ export function launchFor(db: Database, id: string): Launch {
   const server = getServer(db, id);
   if (!server) throw new Error("That server no longer exists.");
 
-  const env = { ...server.launch.env };
-  for (const name of server.launch.secretEnv) env[name] = readSecret(id, name);
+  const { launch } = server;
+  const secrets = Object.fromEntries(secretNames(launch).map((name) => [name, readSecret(id, name)]));
 
-  return { command: server.launch.command, args: server.launch.args, env };
+  return launch.type === "stdio"
+    ? { type: "stdio", command: launch.command, args: launch.args, env: { ...launch.env, ...secrets } }
+    : { type: "http", url: launch.url, headers: { ...launch.headers, ...secrets } };
 }
 
 export function deleteServer(db: Database, id: string) {
@@ -128,5 +152,5 @@ export function deleteServer(db: Database, id: string) {
   if (!server) return;
 
   removeServer(db, id);
-  deleteSecrets(id, server.launch.secretEnv);
+  deleteSecrets(id, secretNames(server.launch));
 }

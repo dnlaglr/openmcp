@@ -5,7 +5,9 @@ import type { Readable } from "node:stream";
 
 import type { LaunchSpec, ServerDetails } from "@openmcp/contracts";
 
-export type Launch = Omit<LaunchSpec, "secretEnv">;
+export type StdioLaunch = Omit<Extract<LaunchSpec, { type: "stdio" }>, "secretEnv">;
+export type HttpLaunch = Omit<Extract<LaunchSpec, { type: "http" }>, "secretHeaders">;
+export type Launch = StdioLaunch | HttpLaunch;
 
 export type Connection = { client: Client; pid: number | null; close: () => Promise<void> };
 

@@ -26,6 +26,7 @@ beforeEach(() => {
 
 test("stores secret values in the keyring and only their names in the database", () => {
   const server = addCustomServer(db, {
+    type: "stdio",
     name: "everything",
     command: "npx",
     args: ["-y", "server-everything"],
@@ -35,6 +36,7 @@ test("stores secret values in the keyring and only their names in the database",
   });
 
   expect(server.launch).toEqual({
+    type: "stdio",
     command: "npx",
     args: ["-y", "server-everything"],
     env: { LOG_LEVEL: "debug" },
@@ -47,7 +49,15 @@ test("stores secret values in the keyring and only their names in the database",
 });
 
 test("rejects a duplicate name with a readable error", () => {
-  const input = { name: "everything", command: "npx", args: [], env: {}, secrets: {}, autostart: false };
+  const input = {
+    type: "stdio" as const,
+    name: "everything",
+    command: "npx",
+    args: [],
+    env: {},
+    secrets: {},
+    autostart: false
+  };
   addCustomServer(db, input);
 
   expect(() => addCustomServer(db, input)).toThrow('A server named "everything" already exists.');
@@ -55,6 +65,7 @@ test("rejects a duplicate name with a readable error", () => {
 
 test("removes already-stored secrets when a later one fails to save", () => {
   const input = {
+    type: "stdio",
     name: "everything",
     command: "npx",
     args: [],
@@ -70,6 +81,7 @@ test("removes already-stored secrets when a later one fails to save", () => {
 
 test("deletes a server's secrets when the server is removed", () => {
   const server = addCustomServer(db, {
+    type: "stdio",
     name: "everything",
     command: "npx",
     args: [],
@@ -86,6 +98,7 @@ test("deletes a server's secrets when the server is removed", () => {
 
 test("launches with plain env plus secrets read from the keyring", () => {
   const server = addCustomServer(db, {
+    type: "stdio",
     name: "everything",
     command: "npx",
     args: ["-y", "server-everything"],
@@ -95,6 +108,7 @@ test("launches with plain env plus secrets read from the keyring", () => {
   });
 
   expect(launchFor(db, server.id)).toEqual({
+    type: "stdio",
     command: "npx",
     args: ["-y", "server-everything"],
     env: { LOG_LEVEL: "debug", API_KEY: "sk-secret-value" }
@@ -103,6 +117,7 @@ test("launches with plain env plus secrets read from the keyring", () => {
 
 test("refuses to launch when a secret is missing from the keyring", () => {
   const server = addCustomServer(db, {
+    type: "stdio",
     name: "everything",
     command: "npx",
     args: [],
@@ -122,10 +137,11 @@ test("refuses to launch a server that no longer exists", () => {
 });
 
 const custom = (name = "everything", secrets: Record<string, string> = {}) =>
-  addCustomServer(db, { name, command: "npx", args: [], env: {}, secrets, autostart: false });
+  addCustomServer(db, { type: "stdio", name, command: "npx", args: [], env: {}, secrets, autostart: false });
 
 const edit = (server: InstalledServer, patch: Partial<ServerUpdate & { version: string }> = {}) =>
   editServer(db, {
+    type: "stdio",
     id: server.id,
     name: server.name,
     command: "npx",
@@ -164,7 +180,7 @@ test("keeps Catalog metadata when a registry server is edited", () => {
     registryName: "io.github.github/github-mcp-server",
     version: "1.0.0",
     autostart: true,
-    launch: { command: "docker", args: ["run"], env: {} },
+    launch: { type: "stdio", command: "docker", args: ["run"], env: {} },
     secrets: {}
   });
 
@@ -182,7 +198,7 @@ test("saves a new Catalog version when one is given", () => {
     registryName: "io.github.github/github-mcp-server",
     version: "1.0.0",
     autostart: true,
-    launch: { command: "docker", args: ["run"], env: {} },
+    launch: { type: "stdio", command: "docker", args: ["run"], env: {} },
     secrets: {}
   });
 
@@ -258,4 +274,91 @@ test("refuses to edit a server that no longer exists", () => {
   deleteServer(db, server.id);
 
   expect(() => edit(server)).toThrow("That server no longer exists.");
+});
+
+const remote = (secrets: Record<string, string> = { Authorization: "Bearer sk" }) =>
+  addCustomServer(db, {
+    type: "http",
+    name: "acme",
+    url: "https://mcp.example.com/mcp",
+    headers: { "X-Region": "eu" },
+    secrets,
+    autostart: false
+  });
+
+test("stores secret headers in the keyring and plain ones in the database", () => {
+  const server = remote();
+
+  expect(server.launch).toEqual({
+    type: "http",
+    url: "https://mcp.example.com/mcp",
+    headers: { "X-Region": "eu" },
+    secretHeaders: ["Authorization"]
+  });
+  expect(keyring.get(`server:${server.id}:Authorization`)).toBe("Bearer sk");
+  expect(JSON.stringify(db.$client.prepare("select * from installed_servers").all())).not.toContain("Bearer sk");
+});
+
+test("connects a remote server with its secret headers merged in", () => {
+  const server = remote();
+
+  expect(launchFor(db, server.id)).toEqual({
+    type: "http",
+    url: "https://mcp.example.com/mcp",
+    headers: { "X-Region": "eu", Authorization: "Bearer sk" }
+  });
+});
+
+test("renames a stored header and deletes the remote server's secrets with it", () => {
+  const server = remote();
+  const edited = editServer(db, {
+    type: "http",
+    id: server.id,
+    name: "acme",
+    url: "https://mcp.example.com/mcp",
+    headers: {},
+    secrets: {},
+    keepSecrets: { "X-Api-Key": "Authorization" },
+    autostart: false
+  });
+
+  expect(edited.launch).toMatchObject({ headers: {}, secretHeaders: ["X-Api-Key"] });
+  expect([...keyring]).toEqual([[`server:${server.id}:X-Api-Key`, "Bearer sk"]]);
+
+  deleteServer(db, server.id);
+  expect(keyring.size).toBe(0);
+});
+
+test("rejects a built URL that doesn't parse before touching the keyring", () => {
+  const save = () =>
+    saveServer(db, {
+      name: "tenant",
+      source: "registry",
+      registryName: "io.github.acme/tenant",
+      version: "1.0.0",
+      autostart: true,
+      launch: { type: "http", url: "https://my tenant.acme.dev/mcp", headers: {} },
+      secrets: { Authorization: "Bearer sk" }
+    });
+
+  expect(save).toThrow("Enter a valid URL, like https://example.com/mcp");
+  expect(keyring.size).toBe(0);
+  expect(listServers(db)).toEqual([]);
+});
+
+test("refuses to turn a local server into a remote one", () => {
+  const server = custom();
+
+  expect(() =>
+    editServer(db, {
+      type: "http",
+      id: server.id,
+      name: server.name,
+      url: "https://mcp.example.com/mcp",
+      headers: {},
+      secrets: {},
+      keepSecrets: {},
+      autostart: false
+    })
+  ).toThrow("A server's type can't change.");
 });
