@@ -4,12 +4,14 @@ import { fileURLToPath } from "node:url";
 import { randomUUID } from "node:crypto";
 
 import { createSupervisor, type Supervisor } from "../../src/main/servers/supervisor";
+import { connector, type Launch } from "../../src/main/servers/connection";
 import { createGatewayServer } from "../../src/main/gateway/server";
 import { listen, type Listener } from "../../src/main/gateway/http";
-import { stdioConnector } from "../../src/main/servers/connection";
 import { createCatalog } from "../../src/main/gateway/catalog";
+import { serveHttpFixture } from "./fixtures/httpServer";
 
 const fixture = fileURLToPath(new URL("./fixtures/stdioServer.mts", import.meta.url));
+const stdioFixture: Launch = { type: "stdio", command: process.execPath, args: [fixture], env: {} };
 const token = "e2e-gateway-token";
 const ping = { jsonrpc: "2.0", id: 1, method: "ping" };
 
@@ -26,9 +28,10 @@ afterEach(async () => {
 
 async function setup() {
   const names = new Map<string, string>();
+  const launches = new Map<string, Launch>();
   const servers = createSupervisor({
-    connect: stdioConnector("test"),
-    resolve: () => ({ command: process.execPath, args: [fixture], env: {} }),
+    connect: connector("test"),
+    resolve: (id) => launches.get(id) ?? stdioFixture,
     onState: (state) => void catalog.sync(state),
     onLog: () => {}
   });
@@ -47,9 +50,10 @@ async function setup() {
 
   return {
     url: new URL(`http://127.0.0.1:${listener.port}/mcp`),
-    start: (name: string) => {
+    start: (name: string, launch = stdioFixture) => {
       const id = randomUUID();
       names.set(id, name);
+      launches.set(id, launch);
       return servers.start(id);
     }
   };
@@ -132,4 +136,23 @@ test("closes promptly while agents are still connected", async () => {
 
   await expect(listener!.close()).resolves.toBeUndefined();
   listener = undefined;
+});
+
+test("serves a remote server's tools to agents like a local server's", async () => {
+  const remote = await serveHttpFixture("e2e-remote-token");
+
+  try {
+    const { url, start } = await setup();
+    await start("remote", { type: "http", url: remote.url, headers: { Authorization: "Bearer e2e-remote-token" } });
+    const agent = await connect(url, "legacy");
+
+    await vi.waitFor(async () =>
+      expect((await agent.listTools()).tools.map((tool) => tool.name)).toEqual(["remote__remote_echo"])
+    );
+    expect(await agent.callTool({ name: "remote__remote_echo", arguments: {} })).toMatchObject({
+      content: [{ type: "text", text: "pong" }]
+    });
+  } finally {
+    await remote.stop();
+  }
 });
