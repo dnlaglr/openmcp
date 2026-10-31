@@ -124,7 +124,7 @@ test("refuses to launch a server that no longer exists", () => {
 const custom = (name = "everything", secrets: Record<string, string> = {}) =>
   addCustomServer(db, { name, command: "npx", args: [], env: {}, secrets, autostart: false });
 
-const edit = (server: InstalledServer, patch: Partial<ServerUpdate> = {}) =>
+const edit = (server: InstalledServer, patch: Partial<ServerUpdate & { version: string }> = {}) =>
   editServer(db, {
     id: server.id,
     name: server.name,
@@ -172,6 +172,23 @@ test("keeps Catalog metadata when a registry server is edited", () => {
     source: "registry",
     registryName: "io.github.github/github-mcp-server",
     version: "1.0.0"
+  });
+});
+
+test("saves a new Catalog version when one is given", () => {
+  const server = saveServer(db, {
+    name: "github",
+    source: "registry",
+    registryName: "io.github.github/github-mcp-server",
+    version: "1.0.0",
+    autostart: true,
+    launch: { command: "docker", args: ["run"], env: {} },
+    secrets: {}
+  });
+
+  expect(edit(server, { version: "1.1.0" })).toMatchObject({
+    registryName: "io.github.github/github-mcp-server",
+    version: "1.1.0"
   });
 });
 

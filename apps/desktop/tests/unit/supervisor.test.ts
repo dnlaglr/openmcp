@@ -226,3 +226,16 @@ test("notes a line from OpenMCP in a known server's logs and ignores unknown ser
   });
   expect(supervisor.logs(id).at(-1)?.text).toBe(logs.at(-1)?.text);
 });
+
+describe("restartIfActive", () => {
+  test("restarts a running server and leaves a stopped one alone", async () => {
+    const { supervisor, processes, statuses } = setup();
+
+    await supervisor.restartIfActive(id);
+    expect(statuses()).toEqual([]);
+
+    await supervisor.start(id);
+    await supervisor.restartIfActive(id);
+    expect(processes.map((process) => process.closed)).toEqual([true, false]);
+  });
+});

@@ -133,6 +133,11 @@ export function createSupervisor({
     await start(id);
   }
 
+  async function restartIfActive(id: string) {
+    const status = entries.get(id)?.state.status;
+    if (status === "starting" || status === "running") await restart(id);
+  }
+
   async function remove(id: string) {
     await stop(id);
     entries.delete(id);
@@ -142,6 +147,7 @@ export function createSupervisor({
     start,
     stop,
     restart,
+    restartIfActive,
     remove,
     stopAll: () => Promise.all([...entries.keys()].map(stop)),
     states: () => [...entries.values()].map((entry) => entry.state),

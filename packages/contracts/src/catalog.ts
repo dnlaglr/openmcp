@@ -53,6 +53,21 @@ export const CatalogInstall = z.object({
 });
 export type CatalogInstall = z.infer<typeof CatalogInstall>;
 
+export const CatalogUpdate = z.object({
+  id: z.uuid(),
+  version: z.string().min(1),
+  values: z.record(z.string(), z.string()).optional()
+});
+export type CatalogUpdate = z.infer<typeof CatalogUpdate>;
+
+export const AvailableUpdate = z.object({
+  serverId: z.uuid(),
+  from: z.string(),
+  entry: CatalogEntry,
+  inputsChanged: z.boolean()
+});
+export type AvailableUpdate = z.infer<typeof AvailableUpdate>;
+
 // A value that was never sent falls back to the default; a sent "" clears it.
 export const inputValue = (input: CatalogInput, values: Record<string, string>) =>
   (values[input.id] ?? input.default ?? "").trim();
@@ -71,4 +86,13 @@ export function inputErrors(inputs: CatalogInput[], values: Record<string, strin
   }
 
   return errors;
+}
+
+// The variable an `env:NAME` input sets on its own; inputs inside a templated value have none.
+export const envName = (input: CatalogInput) => (input.id === `env:${input.label}` ? input.label : null);
+
+// A secret the server already keeps in the keychain under the variable this input sets.
+export function isStoredSecret(input: CatalogInput, secretEnv: string[]) {
+  const name = envName(input);
+  return input.secret && name !== null && secretEnv.includes(name);
 }

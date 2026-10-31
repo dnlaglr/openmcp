@@ -1,4 +1,12 @@
-import { inputErrors, ServerName, type CatalogEntry, type IpcInput } from "@openmcp/contracts";
+import {
+  envName,
+  inputErrors,
+  isStoredSecret,
+  ServerName,
+  type CatalogEntry,
+  type InstalledServer,
+  type IpcInput
+} from "@openmcp/contracts";
 
 export type InstallForm = { name: string; values: Record<string, string>; autostart: boolean };
 
@@ -30,4 +38,23 @@ export function toInstallInput(entry: CatalogEntry, form: InstallForm): IpcInput
     values: form.values,
     autostart: form.autostart
   };
+}
+
+// Plain variables carry over from the current launch; stored secrets start blank, which keeps them.
+export function initialUpdateValues(entry: CatalogEntry, server: InstalledServer): Record<string, string> {
+  return Object.fromEntries(
+    entry.inputs.map((input) => {
+      if (isStoredSecret(input, server.launch.secretEnv)) return [input.id, ""];
+
+      const name = envName(input);
+      return [input.id, (name === null ? undefined : server.launch.env[name]) ?? input.default ?? ""];
+    })
+  );
+}
+
+export function updateFormErrors(entry: CatalogEntry, server: InstalledServer, values: Record<string, string>) {
+  const inputs = entry.inputs.map((input) =>
+    isStoredSecret(input, server.launch.secretEnv) ? { ...input, required: false } : input
+  );
+  return inputErrors(inputs, values);
 }

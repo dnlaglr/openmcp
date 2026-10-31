@@ -1,6 +1,6 @@
 import { Check } from "lucide-react";
 
-import type { CatalogEntry, InstalledServer } from "@openmcp/contracts";
+import type { AvailableUpdate, CatalogEntry, InstalledServer } from "@openmcp/contracts";
 
 import {
   Card,
@@ -17,11 +17,13 @@ import { Badge } from "@/components/ui/badge";
 type CatalogCardProps = {
   entry: CatalogEntry;
   installed: InstalledServer | undefined;
+  update: AvailableUpdate | undefined;
   onInstall: () => void;
+  onUpdate: (update: AvailableUpdate) => void;
   onOpenServers: () => void;
 };
 
-export function CatalogCard({ entry, installed, onInstall, onOpenServers }: CatalogCardProps) {
+export function CatalogCard({ entry, installed, update, onInstall, onUpdate, onOpenServers }: CatalogCardProps) {
   return (
     <Card size="sm">
       <CardHeader>
@@ -39,14 +41,19 @@ export function CatalogCard({ entry, installed, onInstall, onOpenServers }: Cata
       <CardFooter className="flex-wrap justify-between gap-2">
         <div className="flex flex-wrap gap-1">
           {entry.deprecated !== null && <Badge variant="destructive">Deprecated</Badge>}
-          {installed && installed.version !== entry.version && <Badge variant="outline">Update available</Badge>}
         </div>
 
         {installed ? (
           <div className="flex items-center gap-2">
-            <span className="flex items-center gap-1 text-xs text-muted-foreground">
-              <Check className="size-3.5" /> Installed
-            </span>
+            {update ? (
+              <Button size="sm" onClick={() => onUpdate(update)}>
+                Update to v{update.entry.version}
+              </Button>
+            ) : (
+              <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                <Check className="size-3.5" /> Installed
+              </span>
+            )}
             <Button variant="outline" size="sm" onClick={onOpenServers}>
               Open in Servers
             </Button>

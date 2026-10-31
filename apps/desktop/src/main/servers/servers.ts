@@ -73,7 +73,7 @@ export function addCustomServer(db: Database, input: NewCustomServer): Installed
 
 export function editServer(
   db: Database,
-  { id, command, args, env, secrets, keepSecrets, ...server }: ServerUpdate
+  { id, command, args, env, secrets, keepSecrets, ...server }: ServerUpdate & { version?: string }
 ): InstalledServer {
   const current = getServer(db, id);
   if (!current) throw new Error("That server no longer exists.");
@@ -104,19 +104,21 @@ export function editServer(
   return saved;
 }
 
+export function readSecret(serverId: string, name: string) {
+  const value = getSecret(secretKey(serverId, name));
+  if (value === null) {
+    throw new Error(`The secret ${name} is missing from your keychain. Edit the server to set it again.`);
+  }
+
+  return value;
+}
+
 export function launchFor(db: Database, id: string): Launch {
   const server = getServer(db, id);
   if (!server) throw new Error("That server no longer exists.");
 
   const env = { ...server.launch.env };
-  for (const name of server.launch.secretEnv) {
-    const value = getSecret(secretKey(id, name));
-    if (value === null) {
-      throw new Error(`The secret ${name} is missing from your keychain. Edit the server to set it again.`);
-    }
-
-    env[name] = value;
-  }
+  for (const name of server.launch.secretEnv) env[name] = readSecret(id, name);
 
   return { command: server.launch.command, args: server.launch.args, env };
 }

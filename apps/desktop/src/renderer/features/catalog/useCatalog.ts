@@ -1,4 +1,4 @@
-import { keepPreviousData, useInfiniteQuery, useMutation, useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 
 import { CATALOG_MIN_QUERY, type IpcInput } from "@openmcp/contracts";
@@ -7,6 +7,7 @@ import { useServers } from "@/features/servers/useServers";
 
 const STALE_MS = 5 * 60 * 1000;
 const catalogKey = ["catalog"] as const;
+const updatesKey = [...catalogKey, "updates"] as const;
 
 export function usePopular() {
   return useQuery({
@@ -48,4 +49,31 @@ export function useDebounced<T>(value: T, ms: number) {
   }, [value, ms]);
 
   return debounced;
+}
+
+export function useUpdates() {
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    const refresh = () => void queryClient.invalidateQueries({ queryKey: updatesKey });
+    return window.api.on("servers:changed", refresh);
+  }, [queryClient]);
+
+  const { data: updates = [] } = useQuery({
+    queryKey: updatesKey,
+    queryFn: () => window.api.invoke("catalog:updates"),
+    staleTime: STALE_MS
+  });
+  return updates;
+}
+
+export function useApplyUpdate() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (input: IpcInput<"catalog:update">) => window.api.invoke("catalog:update", input),
+    // A stale check can promise a swap the new version no longer allows. The error shows once the refetch is done,
+    // so reopening the dialog shows the form.
+    onError: () => queryClient.invalidateQueries({ queryKey: updatesKey })
+  });
 }

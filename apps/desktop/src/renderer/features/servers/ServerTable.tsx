@@ -4,6 +4,7 @@ import { commandLine, type InstalledServer } from "@openmcp/contracts";
 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ServerDetailsDialog } from "./ServerDetailsDialog";
+import { useUpdates } from "@/features/catalog/useCatalog";
 import { RemoveServerButton } from "./RemoveServerButton";
 import { ServerStatusBadge } from "./ServerStatusBadge";
 import { EditServerButton } from "./EditServerButton";
@@ -11,8 +12,9 @@ import { ServerControls } from "./ServerControls";
 import { useServerStates } from "./useServers";
 import { Badge } from "@/components/ui/badge";
 
-export function ServerTable({ servers }: { servers: InstalledServer[] }) {
+export function ServerTable({ servers, onOpenCatalog }: { servers: InstalledServer[]; onOpenCatalog: () => void }) {
   const stateOf = useServerStates();
+  const updates = useUpdates();
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<string>();
   const selected = servers.find((server) => server.id === selectedId);
@@ -59,7 +61,21 @@ export function ServerTable({ servers }: { servers: InstalledServer[] }) {
                   {commandLine(server.launch)}
                 </TableCell>
                 <TableCell>
-                  <Badge variant="secondary">{server.source === "custom" ? "Custom" : "Catalog"}</Badge>
+                  {updates.some((update) => update.serverId === server.id) ? (
+                    <Badge
+                      variant="outline"
+                      className="cursor-pointer hover:bg-muted"
+                      render={<button type="button" />}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        onOpenCatalog();
+                      }}
+                    >
+                      Update available
+                    </Badge>
+                  ) : (
+                    <Badge variant="secondary">{server.source === "custom" ? "Custom" : "Catalog"}</Badge>
+                  )}
                 </TableCell>
                 <TableCell>{server.autostart ? "On" : "Off"}</TableCell>
                 <TableCell onClick={(event) => event.stopPropagation()}>

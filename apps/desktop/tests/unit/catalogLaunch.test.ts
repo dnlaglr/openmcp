@@ -1,8 +1,8 @@
 import { describe, expect, test } from "vitest";
 
-import type { RegistryEntry, RegistryPackage } from "@openmcp/contracts";
+import type { RegistryEntry, RegistryEnvVar, RegistryPackage } from "@openmcp/contracts";
 
-import { choosePlan, defaultServerName, toCatalogEntry } from "../../src/main/catalog/launch";
+import { choosePlan, defaultServerName, swapPackage, toCatalogEntry } from "../../src/main/catalog/launch";
 
 const npm = (extra: Partial<RegistryPackage> = {}): RegistryPackage => ({
   registryType: "npm",
@@ -308,4 +308,53 @@ test.each([
   ["ai.acme/my.server", "my-server"]
 ])("defaultServerName(%s) is %s", (name, expected) => {
   expect(defaultServerName(name)).toBe(expected);
+});
+
+describe("swapPackage", () => {
+  const env: RegistryEnvVar[] = [{ name: "API_KEY", isRequired: true, isSecret: true }, { name: "REGION" }];
+  const stored = (pkg = "@acme/server@1.2.3") => ({
+    command: "npx",
+    args: ["-y", pkg, "--verbose"],
+    env: { REGION: "eu" },
+    secretEnv: ["API_KEY"]
+  });
+  const from = () => plan(npm({ environmentVariables: env }));
+  const to = (environmentVariables = env) => plan(npm({ version: "1.3.0", environmentVariables }));
+
+  test("moves the pinned package and keeps the user's values and edits", () => {
+    expect(swapPackage(stored(), from(), to())).toEqual({
+      ...stored(),
+      args: ["-y", "@acme/server@1.3.0", "--verbose"]
+    });
+  });
+
+  test("moves a docker image tagged in its identifier", () => {
+    const image = (tag: string) => plan(oci({ identifier: `ghcr.io/acme/server:${tag}`, version: undefined }));
+    const launch = {
+      command: "docker",
+      args: ["run", "-i", "--rm", "ghcr.io/acme/server:1.2.3"],
+      env: {},
+      secretEnv: []
+    };
+
+    expect(swapPackage(launch, image("1.2.3"), image("1.3.0"))?.args).toEqual([
+      "run",
+      "-i",
+      "--rm",
+      "ghcr.io/acme/server:1.3.0"
+    ]);
+  });
+
+  test.each([
+    ["adds a required input", [...env, { name: "WORKSPACE", isRequired: true }]],
+    ["renames a variable", [env[0], { name: "AREA" }]],
+    ["makes a plain variable secret", [env[0], { name: "REGION", isSecret: true }]]
+  ])("refuses when the new version %s", (_, next) => {
+    expect(swapPackage(stored(), from(), to(next))).toBeNull();
+  });
+
+  test("refuses when the stored launch no longer pins the old package or the old version is gone", () => {
+    expect(swapPackage(stored("@acme/server@latest"), from(), to())).toBeNull();
+    expect(swapPackage(stored(), null, to())).toBeNull();
+  });
 });
