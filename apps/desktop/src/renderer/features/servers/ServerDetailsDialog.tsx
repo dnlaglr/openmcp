@@ -11,6 +11,7 @@ import { EditServerButton } from "./EditServerButton";
 import { ServerControls } from "./ServerControls";
 import { ipcErrorMessage } from "@/lib/ipcError";
 import { useServerDetails } from "./useServers";
+import { SignOutButton } from "./ServerSignIn";
 import { ServerLogs } from "./ServerLogs";
 import { Stat } from "@/components/Stat";
 
@@ -44,6 +45,7 @@ export function ServerDetailsDialog({
             <ServerStatusBadge state={state} remote={server.launch.type === "http"} />
             <div className="ml-auto flex items-center">
               <ServerControls server={server} state={state} />
+              <SignOutButton server={server} />
               <EditServerButton server={server} state={state} />
             </div>
           </div>
@@ -58,7 +60,11 @@ export function ServerDetailsDialog({
           </p>
         )}
         {!error && state.status !== "running" && (
-          <p className="text-muted-foreground">Start the server to see its tools, prompts and resources.</p>
+          <p className="text-muted-foreground">
+            {state.status === "signin"
+              ? "Sign in to see its tools, prompts and resources."
+              : "Start the server to see its tools, prompts and resources."}
+          </p>
         )}
         {instructions && (
           <p className="line-clamp-2 text-muted-foreground" title={instructions}>
