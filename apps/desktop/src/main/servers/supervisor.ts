@@ -1,6 +1,6 @@
-import { commandLine, MAX_LOG_LINES, type LogLine, type ServerState } from "@openmcp/contracts";
+import { launchLabel, MAX_LOG_LINES, type LogLine, type ServerState } from "@openmcp/contracts";
 
-import type { Connect, Connection, Launch } from "./connection";
+import { FatalError, type Connect, type Connection, type Launch } from "./connection";
 
 type SupervisorOptions = {
   connect: Connect;
@@ -8,6 +8,7 @@ type SupervisorOptions = {
   onState: (state: ServerState) => void;
   onLog: (line: LogLine) => void;
   restartDelays?: number[];
+  retryEveryMs?: number;
   stableAfterMs?: number;
 };
 
@@ -17,10 +18,23 @@ type Entry = {
   connection?: Connection;
   retry?: ReturnType<typeof setTimeout>;
   run: number;
+  // Remote servers drop with the network and come back on their own, so they never give up.
+  keepTrying: boolean;
 };
 
 const RESTART_DELAYS = [1_000, 2_000, 4_000, 8_000, 16_000];
+const RETRY_EVERY_MS = 60_000;
 const STABLE_AFTER_MS = 30_000;
+
+const message = (error: unknown) => (error instanceof Error ? error.message : String(error));
+
+// Leaves out the query string, since a pasted URL may carry a key in it.
+function startLine(launch: Launch) {
+  if (launch.type === "stdio") return `Starting ${launchLabel(launch)}`;
+
+  const { origin, pathname } = new URL(launch.url);
+  return `Connecting to ${origin}${pathname}`;
+}
 
 export function createSupervisor({
   connect,
@@ -28,6 +42,7 @@ export function createSupervisor({
   onState,
   onLog,
   restartDelays = RESTART_DELAYS,
+  retryEveryMs = RETRY_EVERY_MS,
   stableAfterMs = STABLE_AFTER_MS
 }: SupervisorOptions) {
   const entries = new Map<string, Entry>();
@@ -37,7 +52,7 @@ export function createSupervisor({
     if (!entry) {
       const state: ServerState = { id, status: "stopped", error: null, restarts: 0, pid: null, startedAt: null };
 
-      entry = { state, logs: [], run: 0 };
+      entry = { state, logs: [], run: 0, keepTrying: false };
       entries.set(id, entry);
     }
 
@@ -59,7 +74,7 @@ export function createSupervisor({
 
   function fail(entry: Entry, reason: string, retry: boolean) {
     const restarts = entry.state.restarts;
-    const delay = retry ? restartDelays[restarts] : undefined;
+    const delay = retry ? (restartDelays[restarts] ?? (entry.keepTrying ? retryEveryMs : undefined)) : undefined;
 
     if (delay === undefined) {
       const gaveUp = `${reason}. Gave up after ${restarts} ${restarts === 1 ? "restart" : "restarts"}.`;
@@ -68,30 +83,39 @@ export function createSupervisor({
       return;
     }
 
-    log(entry, "openmcp", `${reason}. Restarting in ${delay / 1000}s.`);
+    log(entry, "openmcp", `${reason}. ${entry.keepTrying ? "Reconnecting" : "Restarting"} in ${delay / 1000}s.`);
     setState(entry, { status: "starting", error: reason, restarts: restarts + 1, pid: null, startedAt: null });
     entry.retry = setTimeout(() => void launch(entry), delay);
   }
 
-  function exited(entry: Entry) {
+  function exited(entry: Entry, reason = "Process exited") {
     const ranFor = Date.now() - (entry.state.startedAt?.getTime() ?? 0);
     entry.connection = undefined;
 
     if (ranFor >= stableAfterMs) entry.state = { ...entry.state, restarts: 0 };
-    fail(entry, "Process exited", true);
+    fail(entry, reason, true);
   }
 
   async function launch(entry: Entry) {
     const run = ++entry.run;
 
+    // A missing secret or a deleted server won't fix itself, so it never retries.
+    let spec: Launch;
     try {
-      const spec = resolve(entry.state.id);
-      log(entry, "openmcp", `Starting ${commandLine(spec)}`);
+      spec = resolve(entry.state.id);
+    } catch (error) {
+      fail(entry, message(error), false);
+      return;
+    }
+    entry.keepTrying = spec.type === "http";
+
+    try {
+      log(entry, "openmcp", startLine(spec));
 
       const connection = await connect(spec, {
         onLog: (text) => log(entry, "stderr", text),
-        onExit: () => {
-          if (entry.run === run) exited(entry);
+        onExit: (reason) => {
+          if (entry.run === run) exited(entry, reason);
         }
       });
       if (entry.run !== run) return void (await connection.close());
@@ -101,7 +125,8 @@ export function createSupervisor({
     } catch (error) {
       if (entry.run !== run) return;
 
-      fail(entry, error instanceof Error ? error.message : String(error), entry.state.restarts > 0);
+      // A command that won't start won't fix itself, but a remote server may only be unreachable for now.
+      fail(entry, message(error), !(error instanceof FatalError) && (entry.keepTrying || entry.state.restarts > 0));
     }
   }
 

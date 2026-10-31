@@ -9,9 +9,9 @@ import { registerClientHandlers } from "./clients/handlers";
 import { registerServerHandlers } from "./servers/handlers";
 import { createSupervisor } from "./servers/supervisor";
 import { createGatewayServer } from "./gateway/server";
-import { stdioConnector } from "./servers/connection";
 import { createCatalog } from "./gateway/catalog";
 import { createGateway } from "./gateway/gateway";
+import { connector } from "./servers/connection";
 import { launchFor } from "./servers/servers";
 import { createMainWindow } from "./windows";
 import { updateOnLaunch } from "./updater";
@@ -73,7 +73,7 @@ if (!app.requestSingleInstanceLock()) {
     app.on("will-quit", () => db.$client.close());
 
     const supervisor = createSupervisor({
-      connect: stdioConnector(app.getVersion()),
+      connect: connector(app.getVersion()),
       resolve: (id) => launchFor(db, id),
       onState: (state) => {
         emit("servers:state", state);

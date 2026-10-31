@@ -3,13 +3,13 @@ import { describe, expect, test, vi } from "vitest";
 
 import { MAX_LOG_LINES, type LogLine, type ServerState } from "@openmcp/contracts";
 
-import type { Connect, Launch } from "../../src/main/servers/connection";
+import { FatalError, type Connect, type Launch } from "../../src/main/servers/connection";
 import { createSupervisor } from "../../src/main/servers/supervisor";
 
 const id = "4f8b6a3e-9c1d-4e2f-8a7b-1c2d3e4f5a6b";
-const launch: Launch = { command: "npx", args: ["-y", "server"], env: {} };
+const launch: Launch = { type: "stdio", command: "npx", args: ["-y", "server"], env: {} };
 
-type FakeProcess = { exit: () => void; closed: boolean };
+type FakeProcess = { exit: (reason?: string) => void; closed: boolean };
 
 type Options = {
   connect?: Connect;
@@ -17,6 +17,7 @@ type Options = {
   failures?: Record<number, string>;
   stderr?: string[];
   restartDelays?: number[];
+  retryEveryMs?: number;
   stableAfterMs?: number;
 };
 
@@ -43,6 +44,7 @@ function setup(options: Options = {}) {
     onState: (state) => states.push(state),
     onLog: (line) => logs.push(line),
     restartDelays: options.restartDelays ?? [0, 0],
+    retryEveryMs: options.retryEveryMs ?? 0,
     stableAfterMs: options.stableAfterMs ?? 60_000
   });
 
@@ -237,5 +239,66 @@ describe("restartIfActive", () => {
     await supervisor.start(id);
     await supervisor.restartIfActive(id);
     expect(processes.map((process) => process.closed)).toEqual([true, false]);
+  });
+});
+
+const remote: Launch = { type: "http", url: "https://mcp.example.com/mcp?key=sk", headers: {} };
+
+describe("remote servers", () => {
+  test("logs the address without its query string", async () => {
+    const { supervisor, logs } = setup({ resolve: () => remote });
+
+    await supervisor.start(id);
+
+    expect(logs[0].text).toBe("Connecting to https://mcp.example.com/mcp");
+  });
+
+  test("retries a failed first start instead of reporting it", async () => {
+    const reason = "Couldn't reach mcp.example.com: fetch failed";
+    const { supervisor, logs, attempts, last } = setup({ resolve: () => remote, failures: { 0: reason } });
+
+    await supervisor.start(id);
+
+    await vi.waitFor(() => expect(last()?.status).toBe("running"));
+    expect(attempts()).toBe(2);
+    expect(logs.map((line) => line.text)).toContain(`${reason}. Reconnecting in 0s.`);
+  });
+
+  test("keeps retrying after the backoff runs out instead of giving up", async () => {
+    const failures = { 0: "down", 1: "down", 2: "down", 3: "down" };
+    const { supervisor, attempts, statuses, last } = setup({ resolve: () => remote, failures, restartDelays: [0] });
+
+    await supervisor.start(id);
+
+    await vi.waitFor(() => expect(last()?.status).toBe("running"));
+    expect(attempts()).toBe(5);
+    expect(statuses()).not.toContain("error");
+  });
+
+  test("stops at once on a fatal failure", async () => {
+    let attempts = 0;
+    const { supervisor, statuses, last } = setup({
+      resolve: () => remote,
+      connect: async () => {
+        attempts++;
+        throw new FatalError("The server rejected the credentials (HTTP 401). Check the headers.");
+      }
+    });
+
+    await supervisor.start(id);
+
+    expect(attempts).toBe(1);
+    expect(statuses()).toEqual(["starting", "error"]);
+    expect(last()?.error).toBe("The server rejected the credentials (HTTP 401). Check the headers.");
+  });
+
+  test("logs why a connection was lost and reconnects", async () => {
+    const { supervisor, processes, logs } = setup({ resolve: () => remote });
+    await supervisor.start(id);
+
+    processes[0].exit("Lost connection: fetch failed");
+
+    await vi.waitFor(() => expect(processes).toHaveLength(2));
+    expect(logs.map((line) => line.text)).toContain("Lost connection: fetch failed. Reconnecting in 0s.");
   });
 });
