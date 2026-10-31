@@ -22,16 +22,13 @@ const HeaderMap = z.record(HeaderName, z.string().regex(/^[^\r\n]*$/, "Header va
   error: HEADER_NAME
 });
 
-const LOOPBACK = new Set(["localhost", "127.0.0.1", "[::1]"]);
+// Matched on the text because this package has no URL global; only an explicit loopback host passes.
+const LOOPBACK = /^http:\/\/(localhost|127\.0\.0\.1|\[::1\])(:\d+)?(\/|$)/i;
 
-// Headers carry keys, so plain http is only allowed when the request never leaves this machine. Zod runs this check
-// even after the format check failed, so an unparseable URL passes here and reports only the format error.
+// Headers carry keys, so plain http is only allowed when the request never leaves this machine.
 export const RemoteUrl = z
   .url({ protocol: /^https?$/, error: "Enter a valid URL, like https://example.com/mcp" })
-  .refine((url) => {
-    const parsed = URL.parse(url);
-    return !parsed || parsed.protocol === "https:" || LOOPBACK.has(parsed.hostname);
-  }, "Use https:// (http:// only works for localhost)");
+  .refine((url) => !/^http:/i.test(url) || LOOPBACK.test(url), "Use https:// (http:// only works for localhost)");
 
 const StdioLaunch = z.object({
   type: z.literal("stdio"),

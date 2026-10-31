@@ -102,6 +102,9 @@ describe("remote launches", () => {
     expect(LaunchSpec.safeParse({ ...remote, url: "http://mcp.example.com/mcp" }).error?.issues[0].message).toBe(
       "Use https:// (http:// only works for localhost)"
     );
+    for (const url of ["http://localhost.evil.com/mcp", "http://127.0.0.1.nip.io/mcp", "http://[::1].evil.com/mcp"]) {
+      expect(LaunchSpec.safeParse({ ...remote, url }).success).toBe(false);
+    }
     expect(LaunchSpec.safeParse({ ...remote, url: "https://my tenant.example.com/mcp" }).error?.issues[0].message).toBe(
       "Enter a valid URL, like https://example.com/mcp"
     );
