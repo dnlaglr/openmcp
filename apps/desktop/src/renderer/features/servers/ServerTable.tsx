@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-import { commandLine, type InstalledServer } from "@openmcp/contracts";
+import { launchLabel, type InstalledServer } from "@openmcp/contracts";
 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ServerDetailsDialog } from "./ServerDetailsDialog";
@@ -31,7 +31,7 @@ export function ServerTable({ servers, onOpenCatalog }: { servers: InstalledServ
           <TableRow>
             <TableHead>Name</TableHead>
             <TableHead>Status</TableHead>
-            <TableHead>Command</TableHead>
+            <TableHead>Command / URL</TableHead>
             <TableHead>Source</TableHead>
             <TableHead>Autostart</TableHead>
             <TableHead className="w-0">
@@ -55,10 +55,10 @@ export function ServerTable({ servers, onOpenCatalog }: { servers: InstalledServ
                   </button>
                 </TableCell>
                 <TableCell>
-                  <ServerStatusBadge state={state} />
+                  <ServerStatusBadge state={state} remote={server.launch.type === "http"} />
                 </TableCell>
                 <TableCell className="max-w-80 truncate font-mono text-xs text-muted-foreground">
-                  {commandLine(server.launch)}
+                  {launchLabel(server.launch)}
                 </TableCell>
                 <TableCell>
                   {updates.some((update) => update.serverId === server.id) ? (

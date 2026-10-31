@@ -20,7 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 
-const runnerNotes: Record<CatalogRunner, { label: string; url: string }> = {
+const runnerNotes: Partial<Record<CatalogRunner, { label: string; url: string }>> = {
   npx: { label: "Needs Node.js", url: "https://nodejs.org/en/download" },
   uvx: { label: "Needs uv", url: "https://docs.astral.sh/uv/getting-started/installation/" },
   docker: { label: "Needs Docker", url: "https://docs.docker.com/get-started/get-docker/" }
@@ -204,14 +204,16 @@ export function InstallServerDialog({ entry, open, onOpenChange }: InstallServer
 
           <div className="flex flex-col gap-1.5 text-xs">
             <code className="rounded-xl bg-muted px-3 py-2 font-mono break-all">{entry.command}</code>
-            <a
-              href={note.url}
-              target="_blank"
-              rel="noreferrer"
-              className={`self-start text-muted-foreground ${linkClass}`}
-            >
-              {note.label}
-            </a>
+            {note && (
+              <a
+                href={note.url}
+                target="_blank"
+                rel="noreferrer"
+                className={`self-start text-muted-foreground ${linkClass}`}
+              >
+                {note.label}
+              </a>
+            )}
           </div>
 
           {install.error && (

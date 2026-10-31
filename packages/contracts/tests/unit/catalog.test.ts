@@ -1,6 +1,13 @@
 import { describe, expect, test } from "vitest";
 
-import { CatalogInstall, CatalogSearch, inputErrors, inputValue, type CatalogInput } from "../../src/catalog";
+import {
+  CatalogInstall,
+  CatalogSearch,
+  inputErrors,
+  inputValue,
+  storedName,
+  type CatalogInput
+} from "../../src/catalog";
 
 const input = (patch: Partial<CatalogInput> = {}): CatalogInput => ({
   id: "env:API_KEY",
@@ -54,5 +61,13 @@ describe("inputErrors", () => {
       "env:REGION": "Choose one of: eu, us"
     });
     expect(inputErrors(inputs, { "env:API_KEY": "sk", "env:REGION": "eu" })).toEqual({});
+  });
+});
+
+describe("storedName", () => {
+  test("names env and header inputs that set a whole value, and not template parts", () => {
+    expect(storedName(input())).toBe("API_KEY");
+    expect(storedName(input({ id: "header:Authorization", label: "Authorization" }))).toBe("Authorization");
+    expect(storedName(input({ id: "header:Authorization:token", label: "token" }))).toBeNull();
   });
 });

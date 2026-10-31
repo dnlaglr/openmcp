@@ -1,20 +1,27 @@
+import { Client, SdkError, StreamableHTTPClientTransport, UnauthorizedError } from "@modelcontextprotocol/client";
 import { StdioClientTransport } from "@modelcontextprotocol/client/stdio";
-import { Client } from "@modelcontextprotocol/client";
 import { createInterface } from "node:readline";
 import type { Readable } from "node:stream";
 
 import type { LaunchSpec, ServerDetails } from "@openmcp/contracts";
 
-export type Launch = Omit<LaunchSpec, "secretEnv">;
+export type StdioLaunch = Omit<Extract<LaunchSpec, { type: "stdio" }>, "secretEnv">;
+export type HttpLaunch = Omit<Extract<LaunchSpec, { type: "http" }>, "secretHeaders">;
+export type Launch = StdioLaunch | HttpLaunch;
 
 export type Connection = { client: Client; pid: number | null; close: () => Promise<void> };
 
-export type Connect = (
-  launch: Launch,
-  handlers: { onLog: (text: string) => void; onExit: () => void }
-) => Promise<Connection>;
+type Handlers = { onLog: (text: string) => void; onExit: (reason?: string) => void };
+type Connector<L extends Launch> = (launch: L, handlers: Handlers) => Promise<Connection>;
+export type Connect = Connector<Launch>;
 
-export function stdioConnector(clientVersion: string): Connect {
+// A connect failure that retrying can't fix, like a rejected key or a wrong address.
+export class FatalError extends Error {}
+
+const PING_EVERY_MS = 30_000;
+const PING_TIMEOUT_MS = 10_000;
+
+export function stdioConnector(clientVersion: string): Connector<StdioLaunch> {
   return async ({ command, args, env }, { onLog, onExit }) => {
     const transport = new StdioClientTransport({ command, args, env, stderr: "pipe" });
 
@@ -43,6 +50,86 @@ export function stdioConnector(clientVersion: string): Connect {
 
     return { client, pid: transport.pid, close: () => client.close() };
   };
+}
+
+function httpStatus(error: unknown) {
+  if (error instanceof UnauthorizedError) return 401;
+
+  const data = error instanceof SdkError ? error.data : undefined;
+  return typeof data === "object" && data !== null && "status" in data && typeof data.status === "number"
+    ? data.status
+    : null;
+}
+
+function fatalMessage(status: number, hasHeaders: boolean) {
+  if (status === 401 && !hasHeaders) return "This server needs you to sign in, which OpenMCP doesn't support yet.";
+  if (status === 401) return "The server rejected the credentials (HTTP 401). Check the headers.";
+  if (status === 403) return "The server denied access (HTTP 403). Check the headers.";
+  if (status === 404) return "Nothing answered at this URL (HTTP 404). Check the address.";
+  if (status === 405) {
+    return "The server doesn't accept Streamable HTTP (HTTP 405). It may only support the older SSE transport.";
+  }
+  return `The server refused the connection (HTTP ${status}).`;
+}
+
+// Only a 4xx is the server's final answer; outages, rate limits and captive portals pass.
+function connectError(error: unknown, launch: HttpLaunch) {
+  const status = httpStatus(error);
+  if (status !== null && status >= 400 && status < 500 && status !== 408 && status !== 429) {
+    return new FatalError(fatalMessage(status, Object.keys(launch.headers).length > 0), { cause: error });
+  }
+
+  const reason = error instanceof Error ? error.message : String(error);
+  return new Error(`Couldn't reach ${new URL(launch.url).host}: ${reason}`, { cause: error });
+}
+
+// HTTP has no process to exit, so a failed ping is how a dropped network or expired session shows up.
+export function httpConnector(
+  clientVersion: string,
+  { pingEveryMs = PING_EVERY_MS }: { pingEveryMs?: number } = {}
+): Connector<HttpLaunch> {
+  return async (launch, { onExit }) => {
+    const transport = new StreamableHTTPClientTransport(new URL(launch.url), {
+      requestInit: { headers: launch.headers }
+    });
+    const client = new Client({ name: "openmcp", version: clientVersion });
+
+    try {
+      await client.connect(transport);
+    } catch (error) {
+      await transport.close().catch(() => {});
+      throw connectError(error, launch);
+    }
+
+    let done = false;
+    const timer = setInterval(() => {
+      client.ping({ timeout: PING_TIMEOUT_MS }).catch((error: unknown) => {
+        if (done) return;
+
+        done = true;
+        clearInterval(timer);
+        void client.close().catch(() => {});
+        onExit(`Lost connection: ${error instanceof Error ? error.message : String(error)}`);
+      });
+    }, pingEveryMs);
+
+    return {
+      client,
+      pid: null,
+      close: () => {
+        done = true;
+        clearInterval(timer);
+        return client.close();
+      }
+    };
+  };
+}
+
+export function connector(clientVersion: string, options: { pingEveryMs?: number } = {}): Connect {
+  const stdio = stdioConnector(clientVersion);
+  const http = httpConnector(clientVersion, options);
+
+  return (launch, handlers) => (launch.type === "http" ? http(launch, handlers) : stdio(launch, handlers));
 }
 
 export async function describeServer(client: Client): Promise<ServerDetails> {

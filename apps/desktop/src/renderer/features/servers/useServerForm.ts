@@ -8,10 +8,13 @@ export function useServerForm() {
 
   function update(patch: Partial<ServerForm>) {
     const edited = new Set<string>(Object.keys(patch));
-    if (edited.has("env")) edited.add("secrets");
+    if (edited.has("env") || edited.has("headers")) edited.add("secrets");
 
     setForm((current) => ({ ...current, ...patch }));
-    setErrors((current) => Object.fromEntries(Object.entries(current).filter(([field]) => !edited.has(field))));
+    // Switching tabs shows other fields, so errors from the hidden ones would only confuse.
+    setErrors((current) =>
+      edited.has("type") ? {} : Object.fromEntries(Object.entries(current).filter(([field]) => !edited.has(field)))
+    );
   }
 
   function validate() {

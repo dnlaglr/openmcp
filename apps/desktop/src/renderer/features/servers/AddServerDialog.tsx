@@ -18,11 +18,12 @@ export function AddServerDialog({ variant }: { variant?: ComponentProps<typeof B
         </DialogTrigger>
       }
       title="Add custom server"
-      description="Run any MCP server by its command. Secret values are stored securely in your OS keychain."
+      description="Run a local command or connect to a remote server. Secret values are stored in your OS keychain."
       submitLabel="Add server"
       initial={emptyServerForm}
       mutation={addServer}
       toInput={(server) => server}
+      chooseType
     />
   );
 }

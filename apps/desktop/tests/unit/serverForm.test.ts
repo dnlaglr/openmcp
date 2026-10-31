@@ -6,10 +6,12 @@ import {
   emptyServerForm,
   keptSecrets,
   newEnvRow,
+  newHeaderRow,
   parseServerForm,
   serverFormFrom,
   toNewCustomServer,
-  type EnvRow
+  type EnvRow,
+  type ServerForm
 } from "../../src/renderer/features/servers/serverForm";
 
 const row = (key: string, value: string, secret = false): EnvRow => ({
@@ -27,6 +29,7 @@ const installed: InstalledServer = {
   registryName: "io.github.github/github-mcp-server",
   version: "1.0.0",
   launch: {
+    type: "stdio",
     command: "docker",
     args: ["run", "-i", "--rm", "-e", "GITHUB_TOKEN", "ghcr.io/github/github-mcp-server:1.0.0"],
     env: { LOG_LEVEL: "debug" },
@@ -46,8 +49,7 @@ describe("toNewCustomServer", () => {
       args: " -y \n\n@scope/server with space \n"
     });
 
-    expect(input.name).toBe("github");
-    expect(input.args).toEqual(["-y", "@scope/server with space"]);
+    expect(input).toMatchObject({ name: "github", args: ["-y", "@scope/server with space"] });
   });
 
   test("sends secret rows as secrets, plain rows as env, and skips rows without a name", () => {
@@ -56,8 +58,7 @@ describe("toNewCustomServer", () => {
       env: [row("LOG_LEVEL", "debug"), row(" API_KEY ", "sk-123", true), row("  ", "ignored")]
     });
 
-    expect(input.env).toEqual({ LOG_LEVEL: "debug" });
-    expect(input.secrets).toEqual({ API_KEY: "sk-123" });
+    expect(input).toMatchObject({ env: { LOG_LEVEL: "debug" }, secrets: { API_KEY: "sk-123" } });
   });
 });
 
@@ -67,7 +68,15 @@ describe("parseServerForm", () => {
 
     expect(result).toEqual({
       success: true,
-      data: { name: "fetch", command: "uvx", args: ["mcp-server-fetch"], env: {}, secrets: {}, autostart: false }
+      data: {
+        type: "stdio",
+        name: "fetch",
+        command: "uvx",
+        args: ["mcp-server-fetch"],
+        env: {},
+        secrets: {},
+        autostart: false
+      }
     });
   });
 
@@ -136,9 +145,10 @@ describe("serverFormFrom", () => {
     const form = serverFormFrom(installed);
 
     expect(toNewCustomServer(form)).toEqual({
+      type: "stdio",
       name: "github",
       command: "docker",
-      args: installed.launch.args,
+      args: ["run", "-i", "--rm", "-e", "GITHUB_TOKEN", "ghcr.io/github/github-mcp-server:1.0.0"],
       env: { LOG_LEVEL: "debug" },
       secrets: {},
       autostart: true
@@ -175,5 +185,94 @@ describe("keptSecrets", () => {
     const form = { ...emptyServerForm, env: [{ ...newEnvRow(), key: "API_KEY", secret: true }] };
 
     expect(keptSecrets(form)).toEqual({});
+  });
+});
+
+describe("remote servers", () => {
+  const remote: InstalledServer = {
+    ...installed,
+    source: "custom",
+    registryName: null,
+    version: null,
+    launch: {
+      type: "http",
+      url: "https://mcp.example.com/mcp",
+      headers: { "X-Region": "eu" },
+      secretHeaders: ["Authorization"]
+    }
+  };
+  const remoteForm = (patch: Partial<ServerForm>) => ({
+    ...emptyServerForm,
+    type: "http" as const,
+    name: "acme",
+    ...patch
+  });
+
+  test("sends secret and plain headers, trimming the URL and header values", () => {
+    const form = remoteForm({
+      url: " https://mcp.example.com/mcp ",
+      headers: [row("Authorization", "Bearer sk\n", true), row("X-Region", " eu ")]
+    });
+
+    expect(parseServerForm(form)).toEqual({
+      success: true,
+      data: {
+        type: "http",
+        name: "acme",
+        url: "https://mcp.example.com/mcp",
+        headers: { "X-Region": "eu" },
+        secrets: { Authorization: "Bearer sk" },
+        autostart: false
+      }
+    });
+  });
+
+  test("rejects plain http to another machine", () => {
+    expect(parseServerForm(remoteForm({ url: "http://mcp.example.com/mcp" }))).toEqual({
+      success: false,
+      errors: { url: "Use https:// (http:// only works for localhost)" }
+    });
+  });
+
+  test("rejects the same header twice in any case", () => {
+    const form = remoteForm({
+      url: "https://mcp.example.com/mcp",
+      headers: [row("Authorization", "a", true), row("authorization", "b")]
+    });
+
+    expect(parseServerForm(form)).toMatchObject({
+      success: false,
+      errors: { headers: "Each header can only be set once" }
+    });
+  });
+
+  test("loads a remote server with its stored header blank and keeps it", () => {
+    const form = serverFormFrom(remote);
+
+    expect(form).toMatchObject({ type: "http", url: "https://mcp.example.com/mcp" });
+    expect(form.headers).toMatchObject([
+      { key: "X-Region", value: "eu", secret: false },
+      { key: "Authorization", value: "", secret: true, stored: "Authorization" }
+    ]);
+    expect(keptSecrets(form)).toEqual({ Authorization: "Authorization" });
+    expect(toNewCustomServer(form)).toEqual({
+      type: "http",
+      name: "github",
+      url: "https://mcp.example.com/mcp",
+      headers: { "X-Region": "eu" },
+      secrets: {},
+      autostart: true
+    });
+  });
+
+  test("keeps both drafts when switching tabs and only sends the active one", () => {
+    const form = { ...emptyServerForm, name: "x", command: "uvx", url: "https://mcp.example.com/mcp" };
+
+    expect(toNewCustomServer({ ...form, type: "http" })).not.toHaveProperty("command");
+    expect(toNewCustomServer(form)).toMatchObject({ type: "stdio", command: "uvx" });
+  });
+
+  test("starts new header rows as secrets", () => {
+    expect(newHeaderRow()).toMatchObject({ key: "", value: "", secret: true, stored: null });
   });
 });

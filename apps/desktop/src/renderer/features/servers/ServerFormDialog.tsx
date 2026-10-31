@@ -12,6 +12,7 @@ import {
   DialogHeader,
   DialogTitle
 } from "@/components/ui/dialog";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ServerFormFields } from "./ServerFormFields";
 import { ipcErrorMessage } from "@/lib/ipcError";
 import { useServerForm } from "./useServerForm";
@@ -26,6 +27,8 @@ type ServerFormDialogProps<T> = {
   initial: ServerForm;
   mutation: UseMutationResult<unknown, Error, T>;
   toInput: (server: NewCustomServer, form: ServerForm) => NoInfer<T>;
+  // Only when adding: a saved server can't switch between a local command and a remote URL.
+  chooseType?: boolean;
 };
 
 export function ServerFormDialog<T>({
@@ -35,7 +38,8 @@ export function ServerFormDialog<T>({
   submitLabel,
   initial,
   mutation,
-  toInput
+  toInput,
+  chooseType = false
 }: ServerFormDialogProps<T>) {
   const [open, setOpen] = useState(false);
   const serverForm = useServerForm();
@@ -71,6 +75,15 @@ export function ServerFormDialog<T>({
             <DialogTitle>{title}</DialogTitle>
             <DialogDescription>{description}</DialogDescription>
           </DialogHeader>
+
+          {chooseType && (
+            <Tabs value={serverForm.form.type} onValueChange={(type: ServerForm["type"]) => change({ type })}>
+              <TabsList className="w-full">
+                <TabsTrigger value="stdio">Local command</TabsTrigger>
+                <TabsTrigger value="http">Remote URL</TabsTrigger>
+              </TabsList>
+            </Tabs>
+          )}
 
           <ServerFormFields form={serverForm.form} errors={serverForm.errors} onChange={change} />
 

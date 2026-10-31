@@ -7,8 +7,8 @@ import { randomUUID } from "node:crypto";
 import { createSupervisor, type Supervisor } from "../../src/main/servers/supervisor";
 import { createGatewayServer } from "../../src/main/gateway/server";
 import { listen, type Listener } from "../../src/main/gateway/http";
-import { stdioConnector } from "../../src/main/servers/connection";
 import { createCatalog } from "../../src/main/gateway/catalog";
+import { connector } from "../../src/main/servers/connection";
 
 const bridge = fileURLToPath(new URL("../../src/main/bridge.ts", import.meta.url));
 const fixture = fileURLToPath(new URL("./fixtures/stdioServer.mts", import.meta.url));
@@ -28,8 +28,8 @@ afterEach(async () => {
 async function gateway() {
   const names = new Map<string, string>();
   const servers = createSupervisor({
-    connect: stdioConnector("test"),
-    resolve: () => ({ command: process.execPath, args: [fixture], env: {} }),
+    connect: connector("test"),
+    resolve: () => ({ type: "stdio", command: process.execPath, args: [fixture], env: {} }),
     onState: (state) => void catalog.sync(state),
     onLog: () => {}
   });

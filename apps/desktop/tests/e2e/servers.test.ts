@@ -8,6 +8,7 @@ import { addCustomServer, deleteServer } from "../../src/main/servers/servers";
 test("round-trips a server's secret through the OS keyring", () => {
   const db = createDatabase({ path: ":memory:", migrationsFolder });
   const server = addCustomServer(db, {
+    type: "stdio",
     name: "everything",
     command: "npx",
     args: [],

@@ -37,6 +37,14 @@ export const RegistryPackage = z.object({
 });
 export type RegistryPackage = z.infer<typeof RegistryPackage>;
 
+export const RegistryRemote = z.object({
+  type: z.string(),
+  url: z.string(),
+  variables: Variables,
+  headers: z.array(RegistryEnvVar).nullish()
+});
+export type RegistryRemote = z.infer<typeof RegistryRemote>;
+
 export const RegistryServer = z.object({
   name: z.string(),
   title: z.string().optional(),
@@ -44,7 +52,8 @@ export const RegistryServer = z.object({
   version: z.string(),
   websiteUrl: z.string().optional(),
   repository: z.object({ url: z.string().optional() }).nullish(),
-  packages: z.array(RegistryPackage).nullish()
+  packages: z.array(RegistryPackage).nullish(),
+  remotes: z.array(RegistryRemote).nullish()
 });
 export type RegistryServer = z.infer<typeof RegistryServer>;
 

@@ -4,7 +4,7 @@ import { ServerName } from "./server";
 
 export const CATALOG_MIN_QUERY = 3;
 
-export const CatalogRunner = z.enum(["npx", "uvx", "docker"]);
+export const CatalogRunner = z.enum(["npx", "uvx", "docker", "remote"]);
 export type CatalogRunner = z.infer<typeof CatalogRunner>;
 
 export const CatalogInput = z.object({
@@ -88,11 +88,12 @@ export function inputErrors(inputs: CatalogInput[], values: Record<string, strin
   return errors;
 }
 
-// The variable an `env:NAME` input sets on its own; inputs inside a templated value have none.
-export const envName = (input: CatalogInput) => (input.id === `env:${input.label}` ? input.label : null);
+// The variable or header an `env:NAME` / `header:NAME` input sets on its own; inputs inside a templated value have none.
+export const storedName = (input: CatalogInput) =>
+  input.id === `env:${input.label}` || input.id === `header:${input.label}` ? input.label : null;
 
-// A secret the server already keeps in the keychain under the variable this input sets.
-export function isStoredSecret(input: CatalogInput, secretEnv: string[]) {
-  const name = envName(input);
-  return input.secret && name !== null && secretEnv.includes(name);
+// A secret the server already keeps in the keychain under the name this input sets.
+export function isStoredSecret(input: CatalogInput, names: string[]) {
+  const name = storedName(input);
+  return input.secret && name !== null && names.includes(name);
 }

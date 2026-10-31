@@ -1,6 +1,7 @@
 import {
   inputErrors,
   isStoredSecret,
+  secretNames,
   type AvailableUpdate,
   type CatalogInstall,
   type CatalogUpdate,
@@ -25,12 +26,12 @@ export async function installServer(db: Database, input: CatalogInstall): Promis
   }
 
   const plan = choosePlan(server);
-  if (!plan) throw new Error("This server has no package OpenMCP can run.");
+  if (!plan) throw new Error("This server has no package or remote OpenMCP can run.");
 
   const [invalid] = Object.values(inputErrors(plan.inputs, input.values));
   if (invalid) throw new Error(invalid);
 
-  const { secrets, ...launch } = plan.build(input.values);
+  const launch = plan.build(input.values);
   return saveServer(db, {
     name: input.name,
     source: "registry",
@@ -38,7 +39,7 @@ export async function installServer(db: Database, input: CatalogInstall): Promis
     version: server.version,
     autostart: input.autostart,
     launch,
-    secrets
+    secrets: launch.secrets
   });
 }
 
@@ -48,12 +49,14 @@ async function availableUpdate(server: InstalledServerRow): Promise<AvailableUpd
   const latest = await getRegistryServer(server.registryName, "latest");
   if (!latest || latest.server.version === server.version) return null;
 
-  const plan = choosePlan(latest.server);
-  const entry = toCatalogEntry(latest);
+  // An installed server keeps its kind, so a new version that adds a package still shows the remote's inputs.
+  const { type } = server.launch;
+  const plan = choosePlan(latest.server, type);
+  const entry = toCatalogEntry(latest, type);
   if (!plan || !entry) return null;
 
   const installed = await getRegistryServer(server.registryName, server.version);
-  const from = installed && choosePlan(installed.server);
+  const from = installed && choosePlan(installed.server, type);
   return { serverId: server.id, from: server.version, entry, inputsChanged: !swapPackage(server.launch, from, plan) };
 }
 
@@ -67,8 +70,9 @@ export async function applyUpdate(db: Database, { id, version, values }: Catalog
   const server = getServer(db, id);
   if (!server?.registryName || !server.version) throw new Error("That server isn't from the Catalog.");
 
+  const { type } = server.launch;
   const next = await getRegistryServer(server.registryName, version);
-  const plan = next && choosePlan(next.server);
+  const plan = next && choosePlan(next.server, type);
   if (!next || !plan) {
     throw new Error("This version is no longer available. Open the Catalog again to get the latest one.");
   }
@@ -77,17 +81,17 @@ export async function applyUpdate(db: Database, { id, version, values }: Catalog
 
   if (!values) {
     const installed = await getRegistryServer(server.registryName, server.version);
-    const launch = swapPackage(server.launch, installed && choosePlan(installed.server), plan);
+    const launch = swapPackage(server.launch, installed && choosePlan(installed.server, type), plan);
     if (!launch) throw new Error("This update changes the server's settings. Open it again to review them.");
 
-    const keepSecrets = Object.fromEntries(launch.secretEnv.map((name) => [name, name]));
-    const { command, args, env } = launch;
-    return editServer(db, { ...saved, command, args, env, secrets: {}, keepSecrets });
+    const keepSecrets = Object.fromEntries(secretNames(launch).map((name) => [name, name]));
+    return editServer(db, { ...saved, ...launch, secrets: {}, keepSecrets });
   }
 
+  const names = secretNames(server.launch);
   const filled = { ...values };
   for (const input of plan.inputs) {
-    if (isStoredSecret(input, server.launch.secretEnv) && !values[input.id]?.trim()) {
+    if (isStoredSecret(input, names) && !values[input.id]?.trim()) {
       filled[input.id] = readSecret(id, input.label);
     }
   }
@@ -95,8 +99,7 @@ export async function applyUpdate(db: Database, { id, version, values }: Catalog
   const [invalid] = Object.values(inputErrors(plan.inputs, filled));
   if (invalid) throw new Error(invalid);
 
-  const { secrets, ...launch } = plan.build(filled);
-  return editServer(db, { ...saved, ...launch, secrets, keepSecrets: {} });
+  return editServer(db, { ...saved, ...plan.build(filled), keepSecrets: {} });
 }
 
 export function registerCatalogHandlers(db: Database, supervisor: Supervisor) {

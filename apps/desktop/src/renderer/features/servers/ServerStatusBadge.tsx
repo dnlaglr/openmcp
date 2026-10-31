@@ -12,8 +12,10 @@ const appearance: Record<ServerStatus, { label: string; dot: string }> = {
   error: { label: "Error", dot: "bg-destructive" }
 };
 
-export function ServerStatusBadge({ state }: { state: ServerState }) {
-  const { label, dot } = appearance[state.status];
+// A remote server has no process to start, so while it (re)connects it says so.
+export function ServerStatusBadge({ state, remote = false }: { state: ServerState; remote?: boolean }) {
+  const { dot } = appearance[state.status];
+  const label = remote && state.status === "starting" ? "Connecting" : appearance[state.status].label;
   const badge = (
     <Badge variant={state.status === "error" ? "destructive" : "outline"}>
       <span className={cn("size-1.5 rounded-full", dot)} />

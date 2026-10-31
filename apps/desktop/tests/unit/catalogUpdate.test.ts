@@ -55,7 +55,7 @@ const installed = (name: string, { args = [], env = {}, secrets = { API_KEY: "sk
     registryName: name,
     version: "1.0.0",
     autostart: false,
-    launch: { command: "npx", args: ["-y", `${short(name)}@1.0.0`, ...args], env },
+    launch: { type: "stdio", command: "npx", args: ["-y", `${short(name)}@1.0.0`, ...args], env },
     secrets
   });
 
@@ -69,7 +69,15 @@ beforeEach(() => {
 
 test("finds a compatible update for each Catalog server", async () => {
   const acme = installed(ACME);
-  addCustomServer(db, { name: "custom", command: "node", args: [], env: {}, secrets: {}, autostart: false });
+  addCustomServer(db, {
+    type: "stdio",
+    name: "custom",
+    command: "node",
+    args: [],
+    env: {},
+    secrets: {},
+    autostart: false
+  });
   registry({ [`${ACME}@1.0.0`]: release(ACME, "1.0.0"), [`${ACME}@latest`]: release(ACME, "1.1.0") });
 
   expect(await findUpdates(db)).toMatchObject([
@@ -155,6 +163,7 @@ test("asks for a new required value and a stored secret missing from the keychai
 test("explains a version the registry no longer has and refuses custom servers", async () => {
   const acme = installed(ACME);
   const custom = addCustomServer(db, {
+    type: "stdio",
     name: "custom",
     command: "node",
     args: [],
@@ -170,4 +179,40 @@ test("explains a version the registry no longer has and refuses custom servers",
   await expect(applyUpdate(db, { id: custom.id, version: "1.1.0" })).rejects.toThrow(
     "That server isn't from the Catalog."
   );
+});
+
+const HOSTED = "io.github.test/hosted";
+const auth = { name: "Authorization", isRequired: true, isSecret: true };
+const hostedRelease = (version: string, packages?: unknown[]) => ({
+  server: {
+    name: HOSTED,
+    description: "A hosted test server",
+    version,
+    remotes: [{ type: "streamable-http", url: "https://mcp.test.dev/mcp", headers: [auth] }],
+    packages
+  }
+});
+
+test("updates a remote server in place and keeps it remote when the new version adds a package", async () => {
+  const server = saveServer(db, {
+    name: "hosted",
+    source: "registry",
+    registryName: HOSTED,
+    version: "1.0.0",
+    autostart: false,
+    launch: { type: "http", url: "https://mcp.test.dev/mcp", headers: {} },
+    secrets: { Authorization: "Bearer sk" }
+  });
+  const next = hostedRelease("1.1.0", [
+    { registryType: "npm", identifier: "hosted", version: "1.1.0", transport: { type: "stdio" } }
+  ]);
+  registry({ [`${HOSTED}@1.0.0`]: hostedRelease("1.0.0"), [`${HOSTED}@latest`]: next, [`${HOSTED}@1.1.0`]: next });
+
+  expect(await findUpdates(db)).toMatchObject([
+    { serverId: server.id, entry: { runner: "remote" }, inputsChanged: false }
+  ]);
+
+  const updated = await applyUpdate(db, { id: server.id, version: "1.1.0" });
+  expect(updated).toMatchObject({ version: "1.1.0", launch: server.launch });
+  expect(keyring.get(key(server.id, "Authorization"))).toBe("Bearer sk");
 });

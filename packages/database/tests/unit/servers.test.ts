@@ -11,7 +11,13 @@ import {
   type Database
 } from "../../src";
 
-const launch = { command: "npx", args: ["-y", "server-everything"], env: {}, secretEnv: ["API_KEY"] };
+const launch = {
+  type: "stdio" as const,
+  command: "npx",
+  args: ["-y", "server-everything"],
+  env: {},
+  secretEnv: ["API_KEY"]
+};
 
 let db: Database;
 beforeEach(() => {
