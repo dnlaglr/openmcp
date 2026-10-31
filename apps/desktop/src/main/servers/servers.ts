@@ -18,7 +18,8 @@ import {
 } from "@openmcp/contracts";
 import { deleteSecret, getSecret, setSecret } from "@openmcp/secrets";
 
-import type { Launch } from "./connection";
+import { hasAuthorization, type Launch } from "./connection";
+import { backgroundAuth, forget } from "./oauth";
 
 const secretKey = (serverId: string, name: string) => `server:${serverId}:${name}`;
 
@@ -123,6 +124,11 @@ export function editServer(db: Database, input: ServerUpdate & { version?: strin
     id,
     storedNames.filter((stale) => !names.includes(stale))
   );
+
+  // Tokens are bound to the exact resource they were issued for.
+  if (current.launch.type === "http" && launch.type === "http" && current.launch.url !== launch.url) {
+    forget(id, current.launch.url);
+  }
   return saved;
 }
 
@@ -142,9 +148,17 @@ export function launchFor(db: Database, id: string): Launch {
   const { launch } = server;
   const secrets = Object.fromEntries(secretNames(launch).map((name) => [name, readSecret(id, name)]));
 
-  return launch.type === "stdio"
-    ? { type: "stdio", command: launch.command, args: launch.args, env: { ...launch.env, ...secrets } }
-    : { type: "http", url: launch.url, headers: { ...launch.headers, ...secrets } };
+  if (launch.type === "stdio") {
+    return { type: "stdio", command: launch.command, args: launch.args, env: { ...launch.env, ...secrets } };
+  }
+
+  const headers = { ...launch.headers, ...secrets };
+  return {
+    type: "http",
+    url: launch.url,
+    headers,
+    auth: hasAuthorization(headers) ? undefined : backgroundAuth(id, launch.url)
+  };
 }
 
 export function deleteServer(db: Database, id: string) {
@@ -153,4 +167,5 @@ export function deleteServer(db: Database, id: string) {
 
   removeServer(db, id);
   deleteSecrets(id, secretNames(server.launch));
+  if (server.launch.type === "http") forget(id, server.launch.url);
 }

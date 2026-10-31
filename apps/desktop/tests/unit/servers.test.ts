@@ -15,6 +15,9 @@ vi.mock("@openmcp/secrets", () => ({
   deleteSecret: (key: string) => keyring.delete(key)
 }));
 
+const oauth = vi.hoisted(() => ({ forget: vi.fn(), backgroundAuth: vi.fn(() => ({ token: async () => undefined })) }));
+vi.mock("../../src/main/servers/oauth", () => oauth);
+
 const { addCustomServer, deleteServer, editServer, launchFor, saveServer } =
   await import("../../src/main/servers/servers");
 
@@ -366,4 +369,58 @@ test("refuses to turn a local server into a remote one", () => {
       autostart: false
     })
   ).toThrow("A server's type can't change.");
+});
+
+const signInServer = () =>
+  addCustomServer(db, {
+    type: "http",
+    name: "notion",
+    url: "https://mcp.notion.com/mcp",
+    headers: {},
+    secrets: {},
+    autostart: false
+  });
+
+const editUrl = (id: string, url: string) =>
+  editServer(db, {
+    type: "http",
+    id,
+    name: "notion",
+    url,
+    headers: {},
+    secrets: {},
+    keepSecrets: {},
+    autostart: false
+  });
+
+test("connects a remote server without a key of its own through the sign-in", () => {
+  const server = signInServer();
+
+  expect(launchFor(db, server.id)).toMatchObject({ auth: expect.anything() });
+  expect(oauth.backgroundAuth).toHaveBeenCalledWith(server.id, "https://mcp.notion.com/mcp");
+});
+
+test("leaves the sign-in out when the user set an Authorization header", () => {
+  const server = remote({ authorization: "Bearer sk" });
+
+  expect(launchFor(db, server.id)).toMatchObject({ auth: undefined });
+  expect(oauth.backgroundAuth).not.toHaveBeenCalled();
+});
+
+test("forgets a remote server's sign-in when its URL changes", () => {
+  const server = signInServer();
+
+  editUrl(server.id, "https://mcp.notion.com/mcp");
+  expect(oauth.forget).not.toHaveBeenCalled();
+
+  editUrl(server.id, "https://mcp.notion.com/v2/mcp");
+  expect(oauth.forget).toHaveBeenCalledWith(server.id, "https://mcp.notion.com/mcp");
+});
+
+test("forgets a remote server's sign-in when it's removed", () => {
+  const server = signInServer();
+
+  deleteServer(db, server.id);
+
+  expect(oauth.forget).toHaveBeenCalledWith(server.id, "https://mcp.notion.com/mcp");
 });
