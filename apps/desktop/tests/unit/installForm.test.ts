@@ -82,7 +82,13 @@ const server: InstalledServer = {
   source: "registry",
   registryName: "io.github.acme/acme-mcp",
   version: "1.2.2",
-  launch: { command: "npx", args: ["-y", "@acme/server@1.2.2"], env: { REGION: "us" }, secretEnv: ["API_KEY"] },
+  launch: {
+    type: "stdio",
+    command: "npx",
+    args: ["-y", "@acme/server@1.2.2"],
+    env: { REGION: "us" },
+    secretEnv: ["API_KEY"]
+  },
   autostart: true,
   createdAt: new Date(0),
   updatedAt: new Date(0)
@@ -96,7 +102,39 @@ test("lets a stored secret stay blank but asks for one that isn't stored", () =>
   const values = initialUpdateValues(entry, server);
 
   expect(updateFormErrors(entry, server, values)).toEqual({});
-  expect(updateFormErrors(entry, { ...server, launch: { ...server.launch, secretEnv: [] } }, values)).toEqual({
+  expect(
+    updateFormErrors(
+      entry,
+      { ...server, launch: { type: "stdio", command: "npx", args: [], env: {}, secretEnv: [] } },
+      values
+    )
+  ).toEqual({
     "env:API_KEY": "Enter a value for API_KEY"
   });
+});
+
+test("prefills a remote update's plain header and leaves its stored header blank", () => {
+  const remoteEntry = {
+    ...entry,
+    runner: "remote" as const,
+    inputs: [
+      input({ id: "header:Authorization", label: "Authorization", required: true, secret: true }),
+      input({ id: "header:X-Region", label: "X-Region" })
+    ]
+  };
+  const remoteServer: InstalledServer = {
+    ...server,
+    launch: {
+      type: "http",
+      url: "https://mcp.acme.dev/mcp",
+      headers: { "X-Region": "us" },
+      secretHeaders: ["Authorization"]
+    }
+  };
+
+  expect(initialUpdateValues(remoteEntry, remoteServer)).toEqual({
+    "header:Authorization": "",
+    "header:X-Region": "us"
+  });
+  expect(updateFormErrors(remoteEntry, remoteServer, initialUpdateValues(remoteEntry, remoteServer))).toEqual({});
 });

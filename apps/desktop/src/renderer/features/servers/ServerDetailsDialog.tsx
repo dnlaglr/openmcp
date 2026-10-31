@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
 
-import { commandLine, type InstalledServer, type ServerDetails, type ServerState } from "@openmcp/contracts";
+import { launchLabel, type InstalledServer, type ServerDetails, type ServerState } from "@openmcp/contracts";
 
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -41,16 +41,16 @@ export function ServerDetailsDialog({
         <DialogHeader className="pr-10">
           <div className="flex items-center gap-3">
             <DialogTitle>{server.name}</DialogTitle>
-            <ServerStatusBadge state={state} />
+            <ServerStatusBadge state={state} remote={server.launch.type === "http"} />
             <div className="ml-auto flex items-center">
               <ServerControls server={server} state={state} />
               <EditServerButton server={server} state={state} />
             </div>
           </div>
-          <DialogDescription className="truncate font-mono text-xs">{commandLine(server.launch)}</DialogDescription>
+          <DialogDescription className="truncate font-mono text-xs">{launchLabel(server.launch)}</DialogDescription>
         </DialogHeader>
 
-        <ServerStats state={state} details={details.data} />
+        <ServerStats server={server} state={state} details={details.data} />
 
         {error && (
           <p role="alert" className="text-sm text-destructive">
@@ -110,9 +110,18 @@ function detailTabs(serverId: string, details?: ServerDetails): Tab[] {
   return tabs;
 }
 
-function ServerStats({ state, details }: { state: ServerState; details?: ServerDetails }) {
+function ServerStats({
+  server,
+  state,
+  details
+}: {
+  server: InstalledServer;
+  state: ServerState;
+  details?: ServerDetails;
+}) {
   const now = useNow(state.status === "running");
   const info = details?.info;
+  const { launch } = server;
 
   return (
     <dl className="grid grid-cols-2 gap-x-6 gap-y-3 rounded-2xl bg-muted/50 p-4 sm:grid-cols-4">
@@ -122,8 +131,12 @@ function ServerStats({ state, details }: { state: ServerState; details?: ServerD
       <Stat label="Protocol">{details?.protocolVersion ?? "—"}</Stat>
       <Stat label="Uptime">{state.startedAt ? formatUptime(now - state.startedAt.getTime()) : "—"}</Stat>
       <Stat label="Started">{state.startedAt ? formatTime(state.startedAt) : "—"}</Stat>
-      <Stat label="Restarts">{state.restarts}</Stat>
-      <Stat label="PID">{state.pid ?? "—"}</Stat>
+      <Stat label={launch.type === "http" ? "Reconnects" : "Restarts"}>{state.restarts}</Stat>
+      {launch.type === "http" ? (
+        <Stat label="Host">{new URL(launch.url).host}</Stat>
+      ) : (
+        <Stat label="PID">{state.pid ?? "—"}</Stat>
+      )}
     </dl>
   );
 }

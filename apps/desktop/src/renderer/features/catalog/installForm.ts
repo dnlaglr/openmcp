@@ -1,8 +1,9 @@
 import {
-  envName,
   inputErrors,
   isStoredSecret,
+  secretNames,
   ServerName,
+  storedName,
   type CatalogEntry,
   type InstalledServer,
   type IpcInput
@@ -40,21 +41,24 @@ export function toInstallInput(entry: CatalogEntry, form: InstallForm): IpcInput
   };
 }
 
-// Plain variables carry over from the current launch; stored secrets start blank, which keeps them.
+// Plain values carry over from the current launch; stored secrets start blank, which keeps them.
 export function initialUpdateValues(entry: CatalogEntry, server: InstalledServer): Record<string, string> {
+  const names = secretNames(server.launch);
+  const plain = server.launch.type === "stdio" ? server.launch.env : server.launch.headers;
+
   return Object.fromEntries(
     entry.inputs.map((input) => {
-      if (isStoredSecret(input, server.launch.secretEnv)) return [input.id, ""];
+      if (isStoredSecret(input, names)) return [input.id, ""];
 
-      const name = envName(input);
-      return [input.id, (name === null ? undefined : server.launch.env[name]) ?? input.default ?? ""];
+      const name = storedName(input);
+      return [input.id, (name === null ? undefined : plain[name]) ?? input.default ?? ""];
     })
   );
 }
 
 export function updateFormErrors(entry: CatalogEntry, server: InstalledServer, values: Record<string, string>) {
   const inputs = entry.inputs.map((input) =>
-    isStoredSecret(input, server.launch.secretEnv) ? { ...input, required: false } : input
+    isStoredSecret(input, secretNames(server.launch)) ? { ...input, required: false } : input
   );
   return inputErrors(inputs, values);
 }

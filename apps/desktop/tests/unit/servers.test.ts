@@ -65,7 +65,7 @@ test("rejects a duplicate name with a readable error", () => {
 
 test("removes already-stored secrets when a later one fails to save", () => {
   const input = {
-    type: "stdio",
+    type: "stdio" as const,
     name: "everything",
     command: "npx",
     args: [],
@@ -139,7 +139,10 @@ test("refuses to launch a server that no longer exists", () => {
 const custom = (name = "everything", secrets: Record<string, string> = {}) =>
   addCustomServer(db, { type: "stdio", name, command: "npx", args: [], env: {}, secrets, autostart: false });
 
-const edit = (server: InstalledServer, patch: Partial<ServerUpdate & { version: string }> = {}) =>
+const edit = (
+  server: InstalledServer,
+  patch: Partial<Extract<ServerUpdate, { type: "stdio" }> & { version: string }> = {}
+) =>
   editServer(db, {
     type: "stdio",
     id: server.id,
@@ -212,13 +215,15 @@ test("replaces a typed secret and keeps a blank one", () => {
   const server = custom("everything", { API_KEY: "old", TOKEN: "tok" });
   edit(server, { secrets: { API_KEY: "new" }, keepSecrets: { TOKEN: "TOKEN" } });
 
-  expect(launchFor(db, server.id).env).toEqual({ API_KEY: "new", TOKEN: "tok" });
+  expect(launchFor(db, server.id)).toEqual(expect.objectContaining({ env: { API_KEY: "new", TOKEN: "tok" } }));
 });
 
 test("moves a renamed secret's value and deletes the old key", () => {
   const server = custom("everything", { API_KEY: "sk" });
 
-  expect(edit(server, { keepSecrets: { TOKEN: "API_KEY" } }).launch.secretEnv).toEqual(["TOKEN"]);
+  expect(edit(server, { keepSecrets: { TOKEN: "API_KEY" } }).launch).toEqual(
+    expect.objectContaining({ secretEnv: ["TOKEN"] })
+  );
   expect([...keyring]).toEqual([[key(server, "TOKEN"), "sk"]]);
 });
 
@@ -226,7 +231,7 @@ test("swaps two secret names without losing either value", () => {
   const server = custom("everything", { A: "a", B: "b" });
   edit(server, { keepSecrets: { A: "B", B: "A" } });
 
-  expect(launchFor(db, server.id).env).toEqual({ A: "b", B: "a" });
+  expect(launchFor(db, server.id)).toEqual(expect.objectContaining({ env: { A: "b", B: "a" } }));
 });
 
 test("deletes removed secrets and ones switched to plain", () => {
@@ -234,7 +239,7 @@ test("deletes removed secrets and ones switched to plain", () => {
   edit(server, { env: { TOKEN: "visible" } });
 
   expect(keyring.size).toBe(0);
-  expect(launchFor(db, server.id).env).toEqual({ TOKEN: "visible" });
+  expect(launchFor(db, server.id)).toEqual(expect.objectContaining({ env: { TOKEN: "visible" } }));
 });
 
 test("rejects a name another server uses", () => {

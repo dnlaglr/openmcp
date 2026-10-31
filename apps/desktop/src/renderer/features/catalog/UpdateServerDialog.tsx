@@ -1,8 +1,9 @@
 import { useState, type FormEvent } from "react";
 
 import {
-  commandLine,
   isStoredSecret,
+  launchLabel,
+  secretNames,
   type AvailableUpdate,
   type CatalogInput,
   type InstalledServer,
@@ -74,7 +75,7 @@ export function UpdateServerDialog({ update, server, state, open, onOpenChange }
   const inputField = (input: CatalogInput) => (
     <CatalogInputField
       key={input.id}
-      input={isStoredSecret(input, server.launch.secretEnv) ? { ...input, placeholder: STORED } : input}
+      input={isStoredSecret(input, secretNames(server.launch)) ? { ...input, placeholder: STORED } : input}
       value={values[input.id] ?? ""}
       error={errors[input.id]}
       onChange={(value) => setValue(input.id, value)}
@@ -103,8 +104,11 @@ export function UpdateServerDialog({ update, server, state, open, onOpenChange }
               <p className="text-sm">This version changes its settings. Check them before updating.</p>
               <FieldGroup>{entry.inputs.map(inputField)}</FieldGroup>
               <div className="flex flex-col gap-1.5 text-xs text-muted-foreground">
-                <p>Your current command. Changes you made to it by hand will be replaced.</p>
-                <code className={codeClass}>{commandLine(server.launch)}</code>
+                <p>
+                  {server.launch.type === "http" ? "Your current URL." : "Your current command."} Changes you made to it
+                  by hand will be replaced.
+                </p>
+                <code className={codeClass}>{launchLabel(server.launch)}</code>
               </div>
             </>
           )}
