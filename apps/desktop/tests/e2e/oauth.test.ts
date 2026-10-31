@@ -186,3 +186,21 @@ test("explains that a server without OAuth can't be signed into", async () => {
     await plain.stop();
   }
 });
+
+test("opens the browser once when a second click replaces a sign-in", async () => {
+  const opened: string[] = [];
+  const { signIn } = setup({
+    openUrl: async (url) => {
+      opened.push(url);
+      await browser(url);
+    }
+  });
+  await supervisor.start(id);
+
+  const first = expect(signIn(id)).rejects.toThrow("Replaced by a new sign-in.");
+  await signIn(id);
+
+  await first;
+  expect(opened).toHaveLength(1);
+  await running();
+});

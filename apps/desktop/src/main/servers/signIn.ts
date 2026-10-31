@@ -110,6 +110,8 @@ export function createSignIn({ urlOf, supervisor, openUrl, onChange, timeoutMs =
         open: async (url) => {
           if (!isSecureUrl(url))
             throw new SignInError("The sign-in page isn't served over HTTPS, so OpenMCP won't open it.");
+          // A flow replaced or cancelled during discovery must not open a tab nobody will finish.
+          signal.throwIfAborted();
 
           supervisor.note(id, "Opened your browser to sign in.");
           await openUrl(url.href);
@@ -162,9 +164,14 @@ export function createSignIn({ urlOf, supervisor, openUrl, onChange, timeoutMs =
     const serverUrl = urlOf(id);
     if (!serverUrl) throw new Error("Only remote servers can sign in.");
 
-    await cancel(id, "Replaced by a new sign-in.");
+    // Registered before awaiting the old flow, so a quick second click can't slip past this one.
+    const previous = flows.get(id);
+    previous?.abort.abort(new SignInError("Replaced by a new sign-in."));
     const abort = new AbortController();
-    const done = run(id, serverUrl, abort.signal);
+    const done = (async () => {
+      await previous?.done.catch(() => {});
+      await run(id, serverUrl, abort.signal);
+    })();
     flows.set(id, { abort, done });
 
     try {
