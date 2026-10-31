@@ -69,7 +69,7 @@ export function ClientRow({ client }: { client: ClientState }) {
               {button.label}
             </Button>
           )}
-          <CopyButton label={`Copy ${client.name} config`} value={client.snippet} variant="ghost" size="icon-sm" />
+          <CopyButton label={`Copy ${client.name} config`} value={client.snippet} />
           {client.path && (
             <>
               <IconAction
