@@ -1,8 +1,15 @@
 import { describe, expect, test } from "vitest";
 
-import type { RegistryEntry, RegistryEnvVar, RegistryPackage } from "@openmcp/contracts";
+import type { LaunchSpec, RegistryEntry, RegistryEnvVar, RegistryPackage, RegistryRemote } from "@openmcp/contracts";
 
-import { choosePlan, defaultServerName, swapPackage, toCatalogEntry } from "../../src/main/catalog/launch";
+import {
+  choosePlan,
+  defaultServerName,
+  planFor,
+  remotePlan,
+  swapPackage,
+  toCatalogEntry
+} from "../../src/main/catalog/launch";
 
 const npm = (extra: Partial<RegistryPackage> = {}): RegistryPackage => ({
   registryType: "npm",
@@ -28,7 +35,7 @@ const server = (...packages: RegistryPackage[]) => ({
 });
 
 function plan(pkg: RegistryPackage) {
-  const result = choosePlan(server(pkg));
+  const result = planFor(pkg);
   if (!result) throw new Error("Expected an installable package");
   return result;
 }
@@ -51,8 +58,7 @@ describe("choosePlan", () => {
     expect(picked?.runner).toBe("uvx");
   });
 
-  test("rejects servers with only remotes or unsupported packages", () => {
-    expect(choosePlan({ ...server(), packages: undefined })).toBeNull();
+  test("rejects unsupported packages", () => {
     expect(choosePlan(server({ registryType: "cargo", identifier: "acme", transport: { type: "stdio" } }))).toBeNull();
   });
 
@@ -76,7 +82,13 @@ describe("choosePlan", () => {
 
 describe("command lines", () => {
   test("pins npm packages behind npx -y", () => {
-    expect(plan(npm()).build({})).toEqual({ command: "npx", args: ["-y", "@acme/server@1.2.3"], env: {}, secrets: {} });
+    expect(plan(npm()).build({})).toEqual({
+      type: "stdio",
+      command: "npx",
+      args: ["-y", "@acme/server@1.2.3"],
+      env: {},
+      secrets: {}
+    });
   });
 
   test("pins pypi packages with uvx", () => {
@@ -102,6 +114,7 @@ describe("command lines", () => {
     });
 
     expect(plan(pkg).build({ "env:API_KEY": "sk" })).toEqual({
+      type: "stdio",
       command: "docker",
       args: ["run", "-i", "--rm", "-e", "API_KEY", "-e", "REGION", "ghcr.io/acme/server:1.2.3"],
       env: { REGION: "eu" },
@@ -138,6 +151,7 @@ describe("command lines", () => {
       { id: "env:GITHUB_TOKEN:token", label: "token", secret: true, required: false }
     ]);
     expect(github.build({ "env:GITHUB_TOKEN:token": "ghp_1" })).toEqual({
+      type: "stdio",
       command: "docker",
       args: [
         "run",
@@ -312,7 +326,8 @@ test.each([
 
 describe("swapPackage", () => {
   const env: RegistryEnvVar[] = [{ name: "API_KEY", isRequired: true, isSecret: true }, { name: "REGION" }];
-  const stored = (pkg = "@acme/server@1.2.3") => ({
+  const stored = (pkg = "@acme/server@1.2.3"): LaunchSpec => ({
+    type: "stdio",
     command: "npx",
     args: ["-y", pkg, "--verbose"],
     env: { REGION: "eu" },
@@ -330,19 +345,17 @@ describe("swapPackage", () => {
 
   test("moves a docker image tagged in its identifier", () => {
     const image = (tag: string) => plan(oci({ identifier: `ghcr.io/acme/server:${tag}`, version: undefined }));
-    const launch = {
+    const launch: LaunchSpec = {
+      type: "stdio",
       command: "docker",
       args: ["run", "-i", "--rm", "ghcr.io/acme/server:1.2.3"],
       env: {},
       secretEnv: []
     };
 
-    expect(swapPackage(launch, image("1.2.3"), image("1.3.0"))?.args).toEqual([
-      "run",
-      "-i",
-      "--rm",
-      "ghcr.io/acme/server:1.3.0"
-    ]);
+    expect(swapPackage(launch, image("1.2.3"), image("1.3.0"))).toMatchObject({
+      args: ["run", "-i", "--rm", "ghcr.io/acme/server:1.3.0"]
+    });
   });
 
   test.each([
@@ -356,5 +369,117 @@ describe("swapPackage", () => {
   test("refuses when the stored launch no longer pins the old package or the old version is gone", () => {
     expect(swapPackage(stored("@acme/server@latest"), from(), to())).toBeNull();
     expect(swapPackage(stored(), null, to())).toBeNull();
+  });
+});
+
+const remote = (extra: Partial<RegistryRemote> = {}): RegistryRemote => ({
+  type: "streamable-http",
+  url: "https://mcp.acme.dev/mcp",
+  ...extra
+});
+const hosted = (...remotes: RegistryRemote[]) => ({ ...server(), packages: undefined, remotes });
+
+function remotePlanOf(source: RegistryRemote) {
+  const result = remotePlan(source);
+  if (!result) throw new Error("Expected a usable remote");
+  return result;
+}
+
+describe("remotes", () => {
+  test("plans a remote-only server as a URL with no runtime", () => {
+    const picked = choosePlan(hosted(remote()));
+
+    expect(picked?.runner).toBe("remote");
+    expect(picked?.build({})).toEqual({ type: "http", url: "https://mcp.acme.dev/mcp", headers: {}, secrets: {} });
+  });
+
+  test("prefers a runnable package, and keeps an installed kind", () => {
+    const both = { ...server(npm()), remotes: [remote()] };
+
+    expect(choosePlan(both)?.runner).toBe("npx");
+    expect(choosePlan(both, "http")?.runner).toBe("remote");
+    expect(choosePlan(hosted(remote()), "stdio")).toBeNull();
+  });
+
+  test("skips SSE remotes and remotes with a secret in the URL", () => {
+    const secretUrl = remote({ url: "https://mcp.acme.dev/{key}", variables: { key: { isSecret: true } } });
+
+    expect(choosePlan(hosted(remote({ type: "sse" })))).toBeNull();
+    expect(choosePlan(hosted(secretUrl))).toBeNull();
+    expect(choosePlan(hosted(remote({ type: "sse" }), remote()))?.runner).toBe("remote");
+  });
+
+  test("asks for URL variables as required inputs and fills them in", () => {
+    const tenant = remotePlanOf(
+      remote({ url: "https://{tenant}.acme.dev/mcp", variables: { tenant: { description: "Your workspace" } } })
+    );
+
+    expect(tenant.inputs).toMatchObject([{ id: "url:tenant", label: "tenant", required: true }]);
+    expect(tenant.build({ "url:tenant": "globex" }).url).toBe("https://globex.acme.dev/mcp");
+  });
+
+  test("sends secret headers to the keychain, plain ones in the clear, and fixed ones without asking", () => {
+    const plan = remotePlanOf(
+      remote({
+        headers: [
+          {
+            name: "Authorization",
+            value: "Bearer {api_key}",
+            isRequired: true,
+            variables: { api_key: { isRequired: true, isSecret: true } }
+          },
+          { name: "X-Region", choices: ["eu", "us"] },
+          { name: "X-Source", value: "openmcp" }
+        ]
+      })
+    );
+
+    expect(plan.inputs.map((input) => input.id)).toEqual(["header:Authorization:api_key", "header:X-Region"]);
+    expect(plan.build({ "header:Authorization:api_key": "sk-1", "header:X-Region": "eu" })).toEqual({
+      type: "http",
+      url: "https://mcp.acme.dev/mcp",
+      headers: { "X-Region": "eu", "X-Source": "openmcp" },
+      secrets: { Authorization: "Bearer sk-1" }
+    });
+  });
+
+  test("treats an undeclared {name} in a header as an input with the header's own description and flags", () => {
+    const plan = remotePlanOf(
+      remote({
+        headers: [
+          { name: "Authorization", value: "Bearer {token}", description: "Your key", isRequired: true, isSecret: true }
+        ]
+      })
+    );
+
+    expect(plan.inputs).toMatchObject([
+      { id: "header:Authorization:token", label: "token", description: "Your key", required: true, secret: true }
+    ]);
+    expect(plan.build({ "header:Authorization:token": "sk" }).secrets).toEqual({ Authorization: "Bearer sk" });
+  });
+
+  test("previews a remote server by its URL", () => {
+    const tenant = remote({ url: "https://{tenant}.acme.dev/mcp", variables: { tenant: {} } });
+
+    expect(toCatalogEntry({ server: hosted(tenant) })).toMatchObject({
+      runner: "remote",
+      command: "https://‹tenant›.acme.dev/mcp"
+    });
+  });
+
+  test("keeps a remote launch when the new version has the same settings, and not when the URL moved", () => {
+    const auth = { name: "Authorization", isRequired: true, isSecret: true };
+    const stored: LaunchSpec = {
+      type: "http",
+      url: "https://mcp.acme.dev/mcp",
+      headers: {},
+      secretHeaders: ["Authorization"]
+    };
+    const v1 = remotePlanOf(remote({ headers: [auth] }));
+
+    expect(swapPackage(stored, v1, remotePlanOf(remote({ headers: [auth] })))).toBe(stored);
+    expect(
+      swapPackage(stored, v1, remotePlanOf(remote({ url: "https://mcp.acme.dev/v2/mcp", headers: [auth] })))
+    ).toBeNull();
   });
 });

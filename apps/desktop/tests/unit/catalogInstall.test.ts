@@ -62,6 +62,7 @@ test("installs the registry's pinned launch and keeps the secret in the keyring"
     version: "2.1.3",
     autostart: true,
     launch: {
+      type: "stdio",
       command: "npx",
       args: ["-y", "@brave/brave-search-mcp-server@2.1.3"],
       env: {},
@@ -92,5 +93,57 @@ test("explains a version the registry no longer has", async () => {
 
 test("refuses a server with nothing OpenMCP can run", async () => {
   registryReplies(() => Response.json({ server: { ...brave.server, packages: [] } }));
-  await expect(installServer(db, install)).rejects.toThrow("This server has no package OpenMCP can run.");
+  await expect(installServer(db, install)).rejects.toThrow("This server has no package or remote OpenMCP can run.");
+});
+
+const hosted = (headers: unknown[], url = "https://mcp.acme.dev/mcp") => ({
+  server: {
+    name: "io.github.acme/hosted",
+    description: "Hosted tools",
+    version: "1.0.0",
+    remotes: [{ type: "streamable-http", url, headers, variables: { tenant: { isRequired: true } } }]
+  }
+});
+const installHosted = (values: Record<string, string>) =>
+  installServer(db, {
+    registryName: "io.github.acme/hosted",
+    version: "1.0.0",
+    name: "hosted",
+    values,
+    autostart: true
+  });
+
+test("installs a remote-only server with its secret header in the keyring", async () => {
+  registryReplies(() =>
+    Response.json(hosted([{ name: "Authorization", value: "Bearer {token}", isRequired: true, isSecret: true }]))
+  );
+
+  const server = await installHosted({ "header:Authorization:token": "sk" });
+
+  expect(server.launch).toEqual({
+    type: "http",
+    url: "https://mcp.acme.dev/mcp",
+    headers: {},
+    secretHeaders: ["Authorization"]
+  });
+  expect(keyring.get(`server:${server.id}:Authorization`)).toBe("Bearer sk");
+});
+
+test("rejects a URL variable that doesn't make a valid URL and saves nothing", async () => {
+  registryReplies(() => Response.json(hosted([], "https://{tenant}.acme.dev/mcp")));
+
+  await expect(installHosted({ "url:tenant": "my tenant" })).rejects.toThrow(
+    "Enter a valid URL, like https://example.com/mcp"
+  );
+  expect(listServers(db)).toEqual([]);
+});
+
+test("rejects a header the registry left unnamed and saves nothing", async () => {
+  registryReplies(() => Response.json(hosted([{ name: "", isRequired: true, isSecret: true }])));
+
+  await expect(installHosted({ "header:": "sk" })).rejects.toThrow(
+    "Header names use letters, numbers and -, with no spaces or colons"
+  );
+  expect(listServers(db)).toEqual([]);
+  expect(keyring.size).toBe(0);
 });
