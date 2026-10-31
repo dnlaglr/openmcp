@@ -2,6 +2,7 @@
   "name": "@openmcp/desktop",
   "productName": "OpenMCP",
   "version": "0.1.0",
+  "homepage": "https://github.com/dnlaglr/openmcp",
   "main": "./dist/main/index.js",
   "scripts": {
     "dev": "electron-vite dev",

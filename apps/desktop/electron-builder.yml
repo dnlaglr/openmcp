@@ -33,6 +33,9 @@ linux:
   category: Development
   maintainer: dnlaglr <dnlaglr@users.noreply.github.com>
   target: [AppImage, deb]
+deb:
+  packageName: openmcp
+  artifactName: openmcp_${version}_${arch}.${ext}
 
 publish:
   provider: github
