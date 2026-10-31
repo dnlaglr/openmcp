@@ -2,6 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { join } from "node:path";
 
 import { databaseContents, launch, withDataDir } from "./app";
+import { serveHttpFixture } from "./fixtures/httpServer";
 
 const fixture = join(__dirname, "fixtures/stdioServer.mts");
 const secretValue = "e2e-ui-secret-value";
@@ -109,4 +110,40 @@ test("edits a running server, then restarts it under its new name with its store
     await page.getByRole("alertdialog").getByRole("button", { name: "Remove" }).click();
     await expect(page.getByText("No servers yet")).toBeVisible();
     await app.close();
+  }));
+
+const remoteToken = "e2e-remote-ui-token";
+
+test("adds a remote server with a secret header, connects to it and keeps the key out of the database", () =>
+  withDataDir(async (dataDir) => {
+    const remote = await serveHttpFixture(remoteToken);
+    const app = await launch(dataDir);
+    const page = await app.firstWindow();
+
+    await page.getByRole("button", { name: "Add Server" }).first().click();
+    const dialog = page.getByRole("dialog");
+    await dialog.getByRole("tab", { name: "Remote URL" }).click();
+    await dialog.getByLabel("Name", { exact: true }).fill("remote");
+    await dialog.getByLabel("URL").fill(remote.url);
+    await dialog.getByRole("button", { name: "Add header" }).click();
+    await dialog.getByLabel("Header name").fill("Authorization");
+    await dialog.getByLabel("Value").fill(`Bearer ${remoteToken}`);
+    await dialog.getByRole("button", { name: "Add server" }).click();
+
+    await expect(page.getByRole("cell", { name: remote.url })).toBeVisible();
+    await page.getByRole("button", { name: "Start remote" }).click();
+    await expect(page.getByRole("cell", { name: "Running", exact: true })).toBeVisible();
+    expect(databaseContents(dataDir)).not.toContain(remoteToken);
+
+    await page.getByRole("button", { name: "remote", exact: true }).click();
+    const details = page.getByRole("dialog");
+    await expect(details.getByText("remote_echo", { exact: true })).toBeVisible();
+    await expect(details.getByText(new URL(remote.url).host, { exact: true })).toBeVisible();
+    await page.keyboard.press("Escape");
+
+    await page.getByRole("button", { name: "Remove remote" }).click();
+    await page.getByRole("alertdialog").getByRole("button", { name: "Remove" }).click();
+    await expect(page.getByText("No servers yet")).toBeVisible();
+    await app.close();
+    await remote.stop();
   }));
