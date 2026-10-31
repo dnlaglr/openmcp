@@ -9,7 +9,8 @@ const appearance: Record<ServerStatus, { label: string; dot: string }> = {
   stopped: { label: "Stopped", dot: "bg-muted-foreground" },
   starting: { label: "Starting", dot: "animate-pulse bg-amber-500" },
   running: { label: "Running", dot: "bg-emerald-500" },
-  error: { label: "Error", dot: "bg-destructive" }
+  error: { label: "Error", dot: "bg-destructive" },
+  signin: { label: "Needs sign-in", dot: "bg-amber-500" }
 };
 
 // A remote server has no process to start, so while it (re)connects it says so.

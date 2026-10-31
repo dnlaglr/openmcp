@@ -3,7 +3,7 @@ import { describe, expect, test, vi } from "vitest";
 
 import { MAX_LOG_LINES, type LogLine, type ServerState } from "@openmcp/contracts";
 
-import { FatalError, type Connect, type Launch } from "../../src/main/servers/connection";
+import { FatalError, SignInRequired, type Connect, type Launch } from "../../src/main/servers/connection";
 import { createSupervisor } from "../../src/main/servers/supervisor";
 
 const id = "4f8b6a3e-9c1d-4e2f-8a7b-1c2d3e4f5a6b";
@@ -300,5 +300,43 @@ describe("remote servers", () => {
 
     await vi.waitFor(() => expect(processes).toHaveLength(2));
     expect(logs.map((line) => line.text)).toContain("Lost connection: fetch failed. Reconnecting in 0s.");
+  });
+});
+
+describe("sign-in", () => {
+  test("waits for a sign-in instead of retrying a server that needs one", async () => {
+    let calls = 0;
+    const connect: Connect = async () => {
+      calls++;
+      throw new SignInRequired();
+    };
+    const { supervisor, logs, statuses, last } = setup({ connect, restartDelays: [0, 0] });
+
+    await supervisor.start(id);
+
+    expect(calls).toBe(1);
+    expect(statuses()).toEqual(["starting", "signin"]);
+    expect(last()).toMatchObject({ error: null, restarts: 0, pid: null, startedAt: null });
+    expect(logs.at(-1)?.text).toBe("This server needs you to sign in");
+  });
+
+  test("closes the connection and waits for a sign-in when asked to", async () => {
+    const { supervisor, processes, last } = setup();
+    await supervisor.start(id);
+
+    await supervisor.requireSignIn(id, "Sign-in timed out. Try again.");
+
+    expect(processes[0].closed).toBe(true);
+    expect(supervisor.client(id)).toBeUndefined();
+    expect(last()).toMatchObject({ status: "signin", error: "Sign-in timed out. Try again.", pid: null });
+  });
+
+  test("starts again from waiting for a sign-in", async () => {
+    const { supervisor, last } = setup();
+
+    await supervisor.requireSignIn(id);
+    await supervisor.start(id);
+
+    expect(last()?.status).toBe("running");
   });
 });
