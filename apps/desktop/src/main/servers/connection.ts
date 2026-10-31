@@ -3,7 +3,8 @@ import {
   SdkError,
   StreamableHTTPClientTransport,
   UnauthorizedError,
-  type AuthProvider
+  type AuthProvider,
+  type FetchLike
 } from "@modelcontextprotocol/client";
 import { StdioClientTransport } from "@modelcontextprotocol/client/stdio";
 import { createInterface } from "node:readline";
@@ -12,7 +13,9 @@ import type { Readable } from "node:stream";
 import type { LaunchSpec, ServerDetails } from "@openmcp/contracts";
 
 export type StdioLaunch = Omit<Extract<LaunchSpec, { type: "stdio" }>, "secretEnv">;
-export type HttpLaunch = Omit<Extract<LaunchSpec, { type: "http" }>, "secretHeaders"> & { auth?: AuthProvider };
+// The fetch lets the provider see which token each response answered.
+export type LaunchAuth = AuthProvider & { fetch: FetchLike };
+export type HttpLaunch = Omit<Extract<LaunchSpec, { type: "http" }>, "secretHeaders"> & { auth?: LaunchAuth };
 export type Launch = StdioLaunch | HttpLaunch;
 
 export type Connection = { client: Client; pid: number | null; close: () => Promise<void> };
@@ -110,7 +113,8 @@ export function httpConnector(
   return async (launch, { onExit }) => {
     const transport = new StreamableHTTPClientTransport(new URL(launch.url), {
       requestInit: { headers: launch.headers },
-      authProvider: launch.auth
+      authProvider: launch.auth,
+      fetch: launch.auth?.fetch
     });
     const client = new Client({ name: "openmcp", version: clientVersion });
 

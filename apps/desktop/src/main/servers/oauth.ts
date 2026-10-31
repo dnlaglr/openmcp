@@ -2,7 +2,6 @@ import {
   auth,
   discoverOAuthServerInfo,
   extractWWWAuthenticateParams,
-  type AuthProvider,
   type FetchLike,
   type OAuthClientProvider,
   type OAuthDiscoveryState,
@@ -12,7 +11,7 @@ import {
 
 import { deleteSecret, getSecret, setSecret } from "@openmcp/secrets";
 
-import { SignInRequired } from "./connection";
+import { SignInRequired, type LaunchAuth } from "./connection";
 
 export type Credentials = { redirectUrl?: string; client?: StoredOAuthClientInformation; tokens?: StoredOAuthTokens };
 export type Flow = { redirectUrl: string; state: string; open: (url: URL) => Promise<void> };
@@ -28,6 +27,8 @@ const cache = new Map<string, Credentials>();
 const discoveries = new Map<string, OAuthDiscoveryState>();
 const challenges = new Map<string, Challenge>();
 const refreshes = new Map<string, Promise<unknown>>();
+// The Authorization header each response answered, so a 401 that left before a refresh doesn't start another one.
+const sentWith = new WeakMap<Response, string | null>();
 
 const secretKey = (serverId: string) => `oauth:${serverId}`;
 
@@ -116,13 +117,22 @@ export function oauthProvider(serverId: string, flow?: Flow): OAuthClientProvide
   };
 }
 
-export function backgroundAuth(serverId: string, serverUrl: string): AuthProvider {
+export function backgroundAuth(serverId: string, serverUrl: string): LaunchAuth {
   return {
     token: async () => credentials(serverId).tokens?.access_token,
+    fetch: async (url, init) => {
+      const response = await fetch(url, init);
+      sentWith.set(response, new Headers(init?.headers).get("authorization"));
+      return response;
+    },
     onUnauthorized: async ({ response }) => {
       const { scope, resourceMetadataUrl } = extractWWWAuthenticateParams(response);
       challenges.set(serverId, { scope, resourceMetadataUrl });
-      if (!credentials(serverId).tokens?.refresh_token) throw new SignInRequired();
+
+      const { tokens } = credentials(serverId);
+      // The token was replaced while this request was out, so the transport's retry with the new one is enough.
+      if (tokens && sentWith.has(response) && sentWith.get(response) !== `Bearer ${tokens.access_token}`) return;
+      if (!tokens?.refresh_token) throw new SignInRequired();
 
       // Parallel requests share one refresh, since a rotating server accepts each refresh token only once.
       let refresh = refreshes.get(serverId);

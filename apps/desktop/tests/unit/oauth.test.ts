@@ -104,3 +104,25 @@ test("forgets the credentials and revokes the refresh token", async () => {
     client_id: "client-1"
   });
 });
+
+test("doesn't refresh again for a 401 that answered a token already replaced", async () => {
+  saveCredentials(id, { client, tokens });
+  auth.mockImplementation(async () => {
+    saveCredentials(id, { tokens: { ...tokens, access_token: "at-2", refresh_token: "rt-2" } });
+    return "AUTHORIZED";
+  });
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () => new Response(null, { status: 401 }))
+  );
+  const provider = backgroundAuth(id, serverUrl);
+  const context = (response: Response) => ({ response, serverUrl: new URL(serverUrl), fetchFn: fetch });
+
+  // Both requests left with the old token; the second 401 lands after the first one's refresh finished.
+  const early = await provider.fetch(serverUrl, { headers: { Authorization: "Bearer at-1" } });
+  const late = await provider.fetch(serverUrl, { headers: { Authorization: "Bearer at-1" } });
+  await provider.onUnauthorized?.(context(early));
+  await provider.onUnauthorized?.(context(late));
+
+  expect(auth).toHaveBeenCalledTimes(1);
+});
