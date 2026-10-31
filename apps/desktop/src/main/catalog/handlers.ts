@@ -13,6 +13,7 @@ import { fetchPopular, getRegistryServer, searchRegistry } from "./registry";
 import { editServer, readSecret, saveServer } from "../servers/servers";
 import { choosePlan, swapPackage, toCatalogEntry } from "./launch";
 import type { Supervisor } from "../servers/supervisor";
+import type { SignIn } from "../servers/signIn";
 import { emit, handle } from "../ipc";
 
 // The renderer only sends values; the launch is always rebuilt from the registry's own server.json.
@@ -102,7 +103,7 @@ export async function applyUpdate(db: Database, { id, version, values }: Catalog
   return editServer(db, { ...saved, ...plan.build(filled), keepSecrets: {} });
 }
 
-export function registerCatalogHandlers(db: Database, supervisor: Supervisor) {
+export function registerCatalogHandlers(db: Database, supervisor: Supervisor, oauth: SignIn) {
   handle("catalog:popular", () => fetchPopular());
   handle("catalog:search", ({ query, cursor }) => searchRegistry(query, cursor));
   handle("catalog:updates", () => findUpdates(db));
@@ -111,7 +112,7 @@ export function registerCatalogHandlers(db: Database, supervisor: Supervisor) {
     const server = await installServer(db, input);
     emit("servers:changed");
 
-    void supervisor.start(server.id);
+    void supervisor.start(server.id).then(() => oauth.signInIfNeeded(server.id));
     return server;
   });
 

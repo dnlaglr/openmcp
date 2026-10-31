@@ -1,4 +1,4 @@
-import { app, autoUpdater, session, type BrowserWindow } from "electron";
+import { app, autoUpdater, session, shell, type BrowserWindow } from "electron";
 
 import { getServer, listServers, pruneActivity } from "@openmcp/database";
 
@@ -12,6 +12,7 @@ import { createGatewayServer } from "./gateway/server";
 import { createCatalog } from "./gateway/catalog";
 import { createGateway } from "./gateway/gateway";
 import { connector } from "./servers/connection";
+import { createSignIn } from "./servers/signIn";
 import { launchFor } from "./servers/servers";
 import { createMainWindow } from "./windows";
 import { updateOnLaunch } from "./updater";
@@ -120,8 +121,18 @@ if (!app.requestSingleInstanceLock()) {
 
     handle("app:version", () => app.getVersion());
     const activity = registerActivityHandlers(db);
-    registerServerHandlers(db, supervisor);
-    registerCatalogHandlers(db, supervisor);
+    const oauth = createSignIn({
+      supervisor,
+      urlOf: (id) => {
+        const launch = getServer(db, id)?.launch;
+        return launch?.type === "http" ? launch.url : undefined;
+      },
+      // Looked up at call time so Playwright can stand in for the browser.
+      openUrl: (url) => shell.openExternal(url),
+      onChange: () => emit("servers:changed")
+    });
+    registerServerHandlers(db, supervisor, oauth);
+    registerCatalogHandlers(db, supervisor, oauth);
     registerGatewayHandlers(gateway);
     const clients = registerClientHandlers(gateway);
     void gateway.start();
