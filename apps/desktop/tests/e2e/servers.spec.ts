@@ -2,6 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { join } from "node:path";
 
 import { databaseContents, launch, withDataDir } from "./app";
+import { serveOAuthFixture } from "./fixtures/oauthServer";
 import { serveHttpFixture } from "./fixtures/httpServer";
 
 const fixture = join(__dirname, "fixtures/stdioServer.mts");
@@ -142,6 +143,48 @@ test("adds a remote server with a secret header, connects to it and keeps the ke
     await page.keyboard.press("Escape");
 
     await page.getByRole("button", { name: "Remove remote" }).click();
+    await page.getByRole("alertdialog").getByRole("button", { name: "Remove" }).click();
+    await expect(page.getByText("No servers yet")).toBeVisible();
+    await app.close();
+    await remote.stop();
+  }));
+
+test("signs in to a remote server through the browser, then signs out and back in", () =>
+  withDataDir(async (dataDir) => {
+    const remote = await serveOAuthFixture();
+    const app = await launch(dataDir);
+    // Stands in for the system browser: follows /authorize's redirect to OpenMCP's loopback callback.
+    await app.evaluate(({ shell }) => {
+      shell.openExternal = async (url: string) => void (await fetch(url));
+    });
+    const page = await app.firstWindow();
+
+    await page.getByRole("button", { name: "Add Server" }).first().click();
+    const dialog = page.getByRole("dialog");
+    await dialog.getByRole("tab", { name: "Remote URL" }).click();
+    await dialog.getByLabel("Name", { exact: true }).fill("oauth");
+    await dialog.getByLabel("URL").fill(remote.url);
+    await dialog.getByRole("switch", { name: "Start automatically when OpenMCP launches" }).click();
+    await dialog.getByRole("button", { name: "Add server" }).click();
+
+    await expect(page.getByRole("cell", { name: "Running", exact: true })).toBeVisible();
+    for (const token of remote.issued) expect(databaseContents(dataDir)).not.toContain(token);
+
+    await page.getByRole("button", { name: "oauth", exact: true }).click();
+    const details = page.getByRole("dialog");
+    await details.getByRole("button", { name: "Sign out of oauth" }).click();
+    await expect(details.getByText("Needs sign-in")).toBeVisible();
+    await expect(details.getByText("Sign in to see its tools, prompts and resources.")).toBeVisible();
+    await expect.poll(() => remote.revoked.length).toBe(1);
+    await page.keyboard.press("Escape");
+    await expect(details).toBeHidden();
+
+    await page.getByRole("button", { name: "Sign in to oauth" }).click();
+    await expect(page.getByRole("cell", { name: "Running", exact: true })).toBeVisible();
+    // Sign-out forgets the registration too, so signing back in registers again.
+    expect(remote.registrations()).toBe(2);
+
+    await page.getByRole("button", { name: "Remove oauth" }).click();
     await page.getByRole("alertdialog").getByRole("button", { name: "Remove" }).click();
     await expect(page.getByText("No servers yet")).toBeVisible();
     await app.close();

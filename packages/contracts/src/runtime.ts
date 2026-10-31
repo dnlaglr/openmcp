@@ -3,7 +3,7 @@ import { z } from "zod";
 
 export const MAX_LOG_LINES = 500;
 
-export const ServerStatus = z.enum(["stopped", "starting", "running", "error"]);
+export const ServerStatus = z.enum(["stopped", "starting", "running", "error", "signin"]);
 export type ServerStatus = z.infer<typeof ServerStatus>;
 
 export const ServerState = z.object({

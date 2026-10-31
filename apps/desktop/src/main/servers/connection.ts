@@ -1,4 +1,11 @@
-import { Client, SdkError, StreamableHTTPClientTransport, UnauthorizedError } from "@modelcontextprotocol/client";
+import {
+  Client,
+  SdkError,
+  StreamableHTTPClientTransport,
+  UnauthorizedError,
+  type AuthProvider,
+  type FetchLike
+} from "@modelcontextprotocol/client";
 import { StdioClientTransport } from "@modelcontextprotocol/client/stdio";
 import { createInterface } from "node:readline";
 import type { Readable } from "node:stream";
@@ -6,7 +13,9 @@ import type { Readable } from "node:stream";
 import type { LaunchSpec, ServerDetails } from "@openmcp/contracts";
 
 export type StdioLaunch = Omit<Extract<LaunchSpec, { type: "stdio" }>, "secretEnv">;
-export type HttpLaunch = Omit<Extract<LaunchSpec, { type: "http" }>, "secretHeaders">;
+// The fetch lets the provider see which token each response answered.
+export type LaunchAuth = AuthProvider & { fetch: FetchLike };
+export type HttpLaunch = Omit<Extract<LaunchSpec, { type: "http" }>, "secretHeaders"> & { auth?: LaunchAuth };
 export type Launch = StdioLaunch | HttpLaunch;
 
 export type Connection = { client: Client; pid: number | null; close: () => Promise<void> };
@@ -17,6 +26,16 @@ export type Connect = Connector<Launch>;
 
 // A connect failure that retrying can't fix, like a rejected key or a wrong address.
 export class FatalError extends Error {}
+
+// A remote server that needs an OAuth sign-in nobody has done yet, or one whose sign-in can't be refreshed.
+export class SignInRequired extends Error {
+  constructor() {
+    super("Sign in to this server in OpenMCP to use it.");
+  }
+}
+
+export const hasAuthorization = (headers: Record<string, string>) =>
+  Object.keys(headers).some((name) => name.toLowerCase() === "authorization");
 
 const PING_EVERY_MS = 30_000;
 const PING_TIMEOUT_MS = 10_000;
@@ -61,8 +80,7 @@ function httpStatus(error: unknown) {
     : null;
 }
 
-function fatalMessage(status: number, hasHeaders: boolean) {
-  if (status === 401 && !hasHeaders) return "This server needs you to sign in, which OpenMCP doesn't support yet.";
+function fatalMessage(status: number) {
   if (status === 401) return "The server rejected the credentials (HTTP 401). Check the headers.";
   if (status === 403) return "The server denied access (HTTP 403). Check the headers.";
   if (status === 404) return "Nothing answered at this URL (HTTP 404). Check the address.";
@@ -74,9 +92,13 @@ function fatalMessage(status: number, hasHeaders: boolean) {
 
 // Only a 4xx is the server's final answer; outages, rate limits and captive portals pass.
 function connectError(error: unknown, launch: HttpLaunch) {
+  if (error instanceof SignInRequired) return error;
+
   const status = httpStatus(error);
+  // Without a key of the user's own, a 401 means the server wants a sign-in (or a key nobody has added).
+  if (status === 401 && !hasAuthorization(launch.headers)) return new SignInRequired();
   if (status !== null && status >= 400 && status < 500 && status !== 408 && status !== 429) {
-    return new FatalError(fatalMessage(status, Object.keys(launch.headers).length > 0), { cause: error });
+    return new FatalError(fatalMessage(status), { cause: error });
   }
 
   const reason = error instanceof Error ? error.message : String(error);
@@ -90,7 +112,9 @@ export function httpConnector(
 ): Connector<HttpLaunch> {
   return async (launch, { onExit }) => {
     const transport = new StreamableHTTPClientTransport(new URL(launch.url), {
-      requestInit: { headers: launch.headers }
+      requestInit: { headers: launch.headers },
+      authProvider: launch.auth,
+      fetch: launch.auth?.fetch
     });
     const client = new Client({ name: "openmcp", version: clientVersion });
 

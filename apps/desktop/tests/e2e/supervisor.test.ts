@@ -150,7 +150,6 @@ test.each([
     "/mcp",
     "The server rejected the credentials (HTTP 401). Check the headers."
   ],
-  ["no key", {}, "/mcp", "This server needs you to sign in, which OpenMCP doesn't support yet."],
   ["a wrong path", undefined, "/nope", "Nothing answered at this URL (HTTP 404). Check the address."]
 ])("stops at once on %s", async (_case, headers, path, error) => {
   remote = await serveHttpFixture(httpToken);
@@ -160,6 +159,16 @@ test.each([
 
   expect(statuses()).toEqual(["starting", "error"]);
   expect(last()?.error).toBe(error);
+});
+
+test("waits for a sign-in when a remote server wants one and has no key", async () => {
+  remote = await serveHttpFixture(httpToken);
+  const { supervisor, id, statuses, last } = setup(remoteLaunch(remote.url, {}), [0]);
+
+  await supervisor.start(id);
+
+  expect(statuses()).toEqual(["starting", "signin"]);
+  expect(last()?.error).toBeNull();
 });
 
 test("keeps retrying a remote server that answers 503, then connects", async () => {

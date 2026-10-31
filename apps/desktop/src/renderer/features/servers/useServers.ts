@@ -69,6 +69,27 @@ export function useServerAction() {
   });
 }
 
+const signedInKey = ["servers-signed-in"] as const;
+
+export function useSignIn() {
+  return useMutation({ mutationFn: (id: string) => window.api.invoke("servers:signIn", { id }) });
+}
+
+export function useSignOut() {
+  return useMutation({ mutationFn: (id: string) => window.api.invoke("servers:signOut", { id }) });
+}
+
+export function useSignedIn() {
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    const refresh = () => void queryClient.invalidateQueries({ queryKey: signedInKey });
+    return window.api.on("servers:changed", refresh);
+  }, [queryClient]);
+
+  return useQuery({ queryKey: signedInKey, queryFn: () => window.api.invoke("servers:signedIn") });
+}
+
 export function useServerLogs(id: string) {
   const queryClient = useQueryClient();
 

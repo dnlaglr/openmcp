@@ -24,6 +24,9 @@ export const ipc = {
   "servers:states": { input: z.void(), output: z.array(ServerState) },
   "servers:logs": { input: ServerId, output: z.array(LogLine) },
   "servers:details": { input: ServerId, output: ServerDetails },
+  "servers:signIn": { input: ServerId, output: z.void() },
+  "servers:signOut": { input: ServerId, output: z.void() },
+  "servers:signedIn": { input: z.void(), output: z.array(z.uuid()) },
 
   "catalog:popular": { input: z.void(), output: z.array(CatalogEntry) },
   "catalog:search": { input: CatalogSearch, output: CatalogResults },

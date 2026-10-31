@@ -11,7 +11,7 @@ export type HttpFixture = {
   failWith: (status: number | null) => void;
 };
 
-function fixtureServer() {
+export function fixtureServer() {
   const server = new McpServer({ name: "http-fixture", version: "1.0.0" });
   server.registerTool("remote_echo", { description: "Answers pong over HTTP." }, () => ({
     content: [{ type: "text" as const, text: "pong" }]

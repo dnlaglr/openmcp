@@ -1,6 +1,6 @@
 import { launchLabel, MAX_LOG_LINES, type LogLine, type ServerState } from "@openmcp/contracts";
 
-import { FatalError, type Connect, type Connection, type Launch } from "./connection";
+import { FatalError, SignInRequired, type Connect, type Connection, type Launch } from "./connection";
 
 type SupervisorOptions = {
   connect: Connect;
@@ -125,6 +125,12 @@ export function createSupervisor({
     } catch (error) {
       if (entry.run !== run) return;
 
+      if (error instanceof SignInRequired) {
+        log(entry, "openmcp", "This server needs you to sign in");
+        setState(entry, { status: "signin", error: null, restarts: 0, pid: null, startedAt: null });
+        return;
+      }
+
       // A command that won't start won't fix itself, but a remote server may only be unreachable for now.
       fail(entry, message(error), !(error instanceof FatalError) && (entry.keepTrying || entry.state.restarts > 0));
     }
@@ -138,19 +144,28 @@ export function createSupervisor({
     await launch(entry);
   }
 
-  async function stop(id: string) {
-    const entry = entries.get(id);
-    if (!entry || entry.state.status === "stopped") return;
-
+  async function halt(entry: Entry) {
     entry.run++;
     clearTimeout(entry.retry);
 
     const connection = entry.connection;
     entry.connection = undefined;
     await connection?.close();
+  }
 
+  async function stop(id: string) {
+    const entry = entries.get(id);
+    if (!entry || entry.state.status === "stopped") return;
+
+    await halt(entry);
     log(entry, "openmcp", "Stopped");
     setState(entry, { status: "stopped", error: null, restarts: 0, pid: null, startedAt: null });
+  }
+
+  async function requireSignIn(id: string, error: string | null = null) {
+    const entry = entryFor(id);
+    await halt(entry);
+    setState(entry, { status: "signin", error, restarts: 0, pid: null, startedAt: null });
   }
 
   async function restart(id: string) {
@@ -171,6 +186,7 @@ export function createSupervisor({
   return {
     start,
     stop,
+    requireSignIn,
     restart,
     restartIfActive,
     remove,
