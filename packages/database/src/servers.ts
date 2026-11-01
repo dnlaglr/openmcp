@@ -26,3 +26,7 @@ export function updateServer(
 ): InstalledServerRow | undefined {
   return db.update(installedServers).set(server).where(eq(installedServers.id, id)).returning().get();
 }
+
+export function setAutostart(db: Database, id: string, autostart: boolean): boolean {
+  return updateServer(db, id, { autostart }) !== undefined;
+}

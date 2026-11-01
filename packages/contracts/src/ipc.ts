@@ -17,6 +17,7 @@ export const ipc = {
   "servers:addCustom": { input: NewCustomServer, output: InstalledServer },
   "servers:update": { input: ServerUpdate, output: InstalledServer },
   "servers:remove": { input: ServerId, output: z.void() },
+  "servers:setAutostart": { input: ServerId.extend({ autostart: z.boolean() }), output: z.void() },
 
   "servers:start": { input: ServerId, output: z.void() },
   "servers:stop": { input: ServerId, output: z.void() },

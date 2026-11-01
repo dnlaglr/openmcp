@@ -1,4 +1,4 @@
-import { listServers, type Database } from "@openmcp/database";
+import { listServers, setAutostart, type Database } from "@openmcp/database";
 
 import { addCustomServer, deleteServer, editServer } from "./servers";
 import type { Catalog } from "../gateway/catalog";
@@ -30,6 +30,11 @@ export function registerServerHandlers(
 
     void supervisor.restartIfActive(server.id);
     return server;
+  });
+
+  handle("servers:setAutostart", ({ id, autostart }) => {
+    if (!setAutostart(db, id, autostart)) throw new Error("That server no longer exists.");
+    emit("servers:changed");
   });
 
   handle("servers:remove", async ({ id }) => {
