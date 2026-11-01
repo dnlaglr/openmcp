@@ -40,7 +40,9 @@ export function ServersPage({ navigate }: PageProps) {
   return (
     <>
       <PageHeader title="MCP Servers" description="Servers installed on this machine." actions={<AddServerDialog />} />
-      <ServersContent navigate={navigate} />
+      <div className="min-h-0 flex-1 overflow-auto p-6">
+        <ServersContent navigate={navigate} />
+      </div>
     </>
   );
 }

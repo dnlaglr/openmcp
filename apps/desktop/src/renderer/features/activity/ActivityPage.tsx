@@ -92,7 +92,9 @@ export function ActivityPage() {
           </Tabs>
         }
       />
-      <ActivityContent scope={scope} drill={drill} onDrill={setDrill} />
+      <div className="min-h-0 flex-1 overflow-auto p-6">
+        <ActivityContent scope={scope} drill={drill} onDrill={setDrill} />
+      </div>
     </>
   );
 }

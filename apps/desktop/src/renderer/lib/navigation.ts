@@ -1,18 +1,22 @@
-import { Activity, Monitor, Server, Settings, Store, type LucideIcon } from "lucide-react";
+import { Activity, LayoutGrid, Monitor, Server, Settings, type LucideIcon } from "lucide-react";
 
-export type Page = "servers" | "clients" | "activity" | "catalog" | "settings";
-
-export type PageProps = { navigate: (page: Page) => void };
+export type Page = "servers" | "agents" | "activity" | "catalog" | "settings";
+export type NavigateParams = { serverId?: string };
+export type Navigate = (page: Page, params?: NavigateParams) => void;
+export type PageProps = { navigate: Navigate; params: NavigateParams };
 
 export type NavItem = { page: Page; label: string; icon: LucideIcon };
 
-export const tabGroups: NavItem[][] = [
-  [
-    { page: "servers", label: "Servers", icon: Server },
-    { page: "clients", label: "Clients", icon: Monitor },
-    { page: "activity", label: "Activity", icon: Activity }
-  ],
-  [{ page: "catalog", label: "Catalog", icon: Store }]
+export const navGroups: { label: string; items: NavItem[] }[] = [
+  {
+    label: "Manage",
+    items: [
+      { page: "servers", label: "Servers", icon: Server },
+      { page: "agents", label: "Agents", icon: Monitor },
+      { page: "activity", label: "Activity", icon: Activity }
+    ]
+  },
+  { label: "Discover", items: [{ page: "catalog", label: "Catalog", icon: LayoutGrid }] }
 ];
 
-export const footerTabs: NavItem[] = [{ page: "settings", label: "Settings", icon: Settings }];
+export const settingsItem: NavItem = { page: "settings", label: "Settings", icon: Settings };

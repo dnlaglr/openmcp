@@ -172,22 +172,24 @@ export function CatalogPage({ navigate }: PageProps) {
     <>
       <PageHeader title="Catalog" description="Servers from the official MCP Registry." />
 
-      <div className="mb-6 flex flex-col gap-1.5">
-        <div className="relative">
-          <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            type="search"
-            aria-label="Search servers"
-            placeholder="Search servers…"
-            className="pl-9"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-          />
+      <div className="min-h-0 flex-1 overflow-auto p-6">
+        <div className="mb-6 flex flex-col gap-1.5">
+          <div className="relative">
+            <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              type="search"
+              aria-label="Search servers"
+              placeholder="Search servers…"
+              className="pl-9"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+            />
+          </div>
+          <p className="text-xs text-muted-foreground">Searches server names</p>
         </div>
-        <p className="text-xs text-muted-foreground">Searches server names</p>
-      </div>
 
-      {content}
+        {content}
+      </div>
 
       {selected && (
         <InstallServerDialog key={selected.name} entry={selected} open={installOpen} onOpenChange={setInstallOpen} />

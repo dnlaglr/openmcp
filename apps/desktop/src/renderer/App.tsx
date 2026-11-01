@@ -1,32 +1,46 @@
-import { useState, type ComponentType } from "react";
+import { addTransitionType, startTransition, useCallback, useState, ViewTransition, type ComponentType } from "react";
 
-import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
+import type { Navigate, NavigateParams, Page, PageProps } from "@/lib/navigation";
 import { ActivityPage } from "@/features/activity/ActivityPage";
 import { SettingsPage } from "@/features/settings/SettingsPage";
 import { CatalogPage } from "@/features/catalog/CatalogPage";
 import { ClientsPage } from "@/features/clients/ClientsPage";
 import { ServersPage } from "@/features/servers/ServersPage";
-import type { Page, PageProps } from "@/lib/navigation";
-import { AppSidebar } from "@/components/AppSidebar";
+import { StatusBar } from "@/components/StatusBar";
+import { Sidebar } from "@/components/Sidebar";
 
 const pages: Record<Page, ComponentType<PageProps>> = {
   servers: ServersPage,
-  clients: ClientsPage,
+  agents: ClientsPage,
   activity: ActivityPage,
   catalog: CatalogPage,
   settings: SettingsPage
 };
 
+type Route = { page: Page; params: NavigateParams };
+
 export function App() {
-  const [page, setPage] = useState<Page>("servers");
-  const Current = pages[page];
+  const [route, setRoute] = useState<Route>({ page: "servers", params: {} });
+
+  const navigate = useCallback<Navigate>(
+    (page, params = {}) =>
+      startTransition(() => {
+        addTransitionType("nav");
+        setRoute({ page, params });
+      }),
+    []
+  );
+  const Current = pages[route.page];
 
   return (
-    <SidebarProvider>
-      <AppSidebar current={page} onSelect={setPage} />
-      <SidebarInset className="min-w-0 p-6">
-        <Current navigate={setPage} />
-      </SidebarInset>
-    </SidebarProvider>
+    <div className="grid h-screen grid-cols-[var(--sidebar-width)_minmax(0,1fr)] grid-rows-[minmax(0,1fr)_var(--statusbar-height)] overflow-hidden">
+      <Sidebar current={route.page} onSelect={(page) => navigate(page)} />
+      <ViewTransition update={{ nav: "page-nav", default: "none" }}>
+        <main className="flex min-h-0 min-w-0 flex-col">
+          <Current key={route.page} navigate={navigate} params={route.params} />
+        </main>
+      </ViewTransition>
+      <StatusBar navigate={navigate} />
+    </div>
   );
 }

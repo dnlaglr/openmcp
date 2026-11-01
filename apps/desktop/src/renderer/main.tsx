@@ -12,6 +12,8 @@ import "./index.css";
 
 const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
 
+document.documentElement.dataset.platform = navigator.userAgent.includes("Macintosh") ? "mac" : "other";
+
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>

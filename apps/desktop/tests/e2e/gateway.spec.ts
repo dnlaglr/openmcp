@@ -28,7 +28,7 @@ test("moves the gateway to the port chosen in Settings", () =>
     const page = await app.firstWindow();
     await choosePort(page, port);
 
-    await expect(page.getByText(`Gateway on :${port}`)).toBeVisible();
+    await expect(page.getByRole("button", { name: "Copy the gateway URL" })).toContainText(`127.0.0.1:${port}`);
     await expect(page.getByLabel("URL", { exact: true })).toHaveValue(`http://127.0.0.1:${port}/mcp`);
     expect((await fetch(`http://127.0.0.1:${port}/mcp`, { method: "POST" })).status).toBe(401);
     await app.close();

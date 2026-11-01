@@ -40,8 +40,10 @@ function ClientsContent() {
 export function ClientsPage() {
   return (
     <>
-      <PageHeader title="Clients" description="Connect your AI apps to the OpenMCP gateway." />
-      <ClientsContent />
+      <PageHeader title="Agents" description="Connect your AI apps to the OpenMCP gateway." />
+      <div className="min-h-0 flex-1 overflow-auto p-6">
+        <ClientsContent />
+      </div>
     </>
   );
 }

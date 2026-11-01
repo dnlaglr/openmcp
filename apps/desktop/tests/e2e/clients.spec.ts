@@ -12,7 +12,7 @@ test("connects and disconnects Claude Code through its config file", () =>
 
     const app = await launch(dataDir, { CLAUDE_CONFIG_DIR: configDir });
     const page = await app.firstWindow();
-    await page.getByRole("button", { name: "Clients", exact: true }).click();
+    await page.getByRole("button", { name: "Agents", exact: true }).click();
 
     const row = page.getByRole("row", { name: /Claude Code/ });
     await expect(row.getByText("Not connected")).toBeVisible();
