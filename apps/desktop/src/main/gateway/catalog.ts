@@ -29,6 +29,7 @@ type CatalogOptions = {
   supervisor: Pick<Supervisor, "client" | "note">;
   nameOf: (id: string) => string | undefined;
   onChange: (kinds: ListKind[]) => void;
+  onCounts?: (counts: ServerCounts[]) => void;
 };
 
 const LIST_CHANGED = [
@@ -73,7 +74,7 @@ async function fetchLists(client: Client): Promise<Lists> {
   return { tools, prompts, resources, templates };
 }
 
-export function createCatalog({ supervisor, nameOf, onChange }: CatalogOptions) {
+export function createCatalog({ supervisor, nameOf, onChange, onCounts }: CatalogOptions) {
   const entries = new Map<string, Entry>();
   const generations = new Map<string, number>();
   let view = build();
@@ -140,6 +141,7 @@ export function createCatalog({ supervisor, nameOf, onChange }: CatalogOptions) 
       (kind) => snapshot(before, kind) !== snapshot(view, kind)
     );
     if (kinds.length > 0) onChange(kinds);
+    onCounts?.(counts());
   }
 
   function bump(id: string) {
@@ -186,6 +188,15 @@ export function createCatalog({ supervisor, nameOf, onChange }: CatalogOptions) 
     await refresh(state.id);
   }
 
+  function counts(): ServerCounts[] {
+    return [...entries].map(([id, entry]) => ({
+      id,
+      tools: entry.tools.length,
+      prompts: entry.prompts.length,
+      resources: entry.resources.length
+    }));
+  }
+
   return {
     sync,
     tools: () => view.tools,
@@ -198,7 +209,8 @@ export function createCatalog({ supervisor, nameOf, onChange }: CatalogOptions) 
 
       const owner = view.matchers.find(({ template }) => template.match(name))?.owner;
       return owner ? { ...owner, name } : null;
-    }
+    },
+    counts
   };
 }
 

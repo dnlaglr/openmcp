@@ -1,13 +1,19 @@
 import { listServers, type Database } from "@openmcp/database";
 
 import { addCustomServer, deleteServer, editServer } from "./servers";
+import type { Catalog } from "../gateway/catalog";
 import type { Supervisor } from "./supervisor";
 import { describeServer } from "./connection";
 import type { SignIn } from "./signIn";
 import { emit, handle } from "../ipc";
 import { hasTokens } from "./oauth";
 
-export function registerServerHandlers(db: Database, supervisor: Supervisor, oauth: SignIn) {
+export function registerServerHandlers(
+  db: Database,
+  supervisor: Supervisor,
+  oauth: SignIn,
+  catalog: Pick<Catalog, "counts">
+) {
   handle("servers:list", () => listServers(db));
 
   handle("servers:addCustom", (input) => {
@@ -38,6 +44,7 @@ export function registerServerHandlers(db: Database, supervisor: Supervisor, oau
   handle("servers:stop", ({ id }) => supervisor.stop(id));
   handle("servers:restart", ({ id }) => supervisor.restart(id));
   handle("servers:states", () => supervisor.states());
+  handle("servers:counts", () => catalog.counts());
   handle("servers:logs", ({ id }) => supervisor.logs(id));
 
   handle("servers:signIn", ({ id }) => oauth.signIn(id));

@@ -6,6 +6,9 @@ export const MAX_LOG_LINES = 500;
 export const ServerStatus = z.enum(["stopped", "starting", "running", "error", "signin"]);
 export type ServerStatus = z.infer<typeof ServerStatus>;
 
+export const ServerCounts = z.object({ id: z.uuid(), tools: z.int(), prompts: z.int(), resources: z.int() });
+export type ServerCounts = z.infer<typeof ServerCounts>;
+
 export const ServerState = z.object({
   id: z.uuid(),
   status: ServerStatus,

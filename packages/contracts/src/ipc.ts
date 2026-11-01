@@ -2,9 +2,9 @@ import { z } from "zod";
 
 import { AvailableUpdate, CatalogEntry, CatalogInstall, CatalogResults, CatalogSearch, CatalogUpdate } from "./catalog";
 import { ActivityEntry, ActivityQuery, ActivityScope, ActivitySummary } from "./activity";
+import { LogLine, ServerCounts, ServerDetails, ServerState } from "./runtime";
 import { InstalledServer, NewCustomServer, ServerUpdate } from "./server";
 import { GatewayConnection, GatewayPort, GatewayState } from "./gateway";
-import { LogLine, ServerDetails, ServerState } from "./runtime";
 import { ClientId, ClientState } from "./clients";
 
 const ServerId = z.object({ id: z.uuid() });
@@ -22,6 +22,7 @@ export const ipc = {
   "servers:stop": { input: ServerId, output: z.void() },
   "servers:restart": { input: ServerId, output: z.void() },
   "servers:states": { input: z.void(), output: z.array(ServerState) },
+  "servers:counts": { input: z.void(), output: z.array(ServerCounts) },
   "servers:logs": { input: ServerId, output: z.array(LogLine) },
   "servers:details": { input: ServerId, output: ServerDetails },
   "servers:signIn": { input: ServerId, output: z.void() },
@@ -56,6 +57,7 @@ export type IpcOutput<C extends IpcChannel> = z.output<(typeof ipc)[C]["output"]
 export const ipcEvents = {
   "servers:changed": z.void(),
   "servers:state": ServerState,
+  "servers:counts": z.array(ServerCounts),
   "servers:log": LogLine,
   "gateway:state": GatewayState,
   "clients:changed": z.void(),

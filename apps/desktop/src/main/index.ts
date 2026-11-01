@@ -85,7 +85,8 @@ if (!app.requestSingleInstanceLock()) {
     const catalog = createCatalog({
       supervisor,
       nameOf: (id) => getServer(db, id)?.name,
-      onChange: (kinds) => gateway.notify(kinds)
+      onChange: (kinds) => gateway.notify(kinds),
+      onCounts: (counts) => emit("servers:counts", counts)
     });
     const gateway = createGateway({
       db,
@@ -131,7 +132,7 @@ if (!app.requestSingleInstanceLock()) {
       openUrl: (url) => shell.openExternal(url),
       onChange: () => emit("servers:changed")
     });
-    registerServerHandlers(db, supervisor, oauth);
+    registerServerHandlers(db, supervisor, oauth, catalog);
     registerCatalogHandlers(db, supervisor, oauth);
     registerGatewayHandlers(gateway);
     const clients = registerClientHandlers(gateway);

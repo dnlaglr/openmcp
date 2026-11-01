@@ -1,7 +1,7 @@
 import { ProtocolError, ProtocolErrorCode, type Client } from "@modelcontextprotocol/client";
 import { expect, test, vi } from "vitest";
 
-import type { ServerState } from "@openmcp/contracts";
+import type { ServerCounts, ServerState } from "@openmcp/contracts";
 
 import { createCatalog, type ListKind } from "../../src/main/gateway/catalog";
 
@@ -226,4 +226,23 @@ test("treats a server without resource templates as having none", async () => {
 
   expect(catalog.resources()).toHaveLength(1);
   expect(notes).toEqual([]);
+});
+
+test("counts what each running server exposes", async () => {
+  const fake = fakeClient({ exposes: { tools: ["a", "b"], prompts: ["p"], resources: ["file:///x"] } });
+  const reported: ServerCounts[][] = [];
+  const catalog = createCatalog({
+    supervisor: { client: () => fake.client, note: () => {} },
+    nameOf: () => "fs",
+    onChange: () => {},
+    onCounts: (counts) => void reported.push(counts)
+  });
+
+  await catalog.sync(state("s1", "running"));
+  expect(catalog.counts()).toEqual([{ id: "s1", tools: 2, prompts: 1, resources: 1 }]);
+  expect(reported.at(-1)).toEqual(catalog.counts());
+
+  await catalog.sync(state("s1", "stopped"));
+  expect(catalog.counts()).toEqual([]);
+  expect(reported.at(-1)).toEqual([]);
 });
