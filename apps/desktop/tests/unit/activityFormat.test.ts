@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 
-import { formatDuration, formatWhen } from "../../src/renderer/features/activity/activityFormat";
+import { formatAgo, formatDuration, formatWhen } from "../../src/renderer/features/activity/activityFormat";
 import { formatTime } from "../../src/renderer/features/servers/serverDetails";
 
 describe("formatDuration", () => {
@@ -32,4 +32,15 @@ describe("formatWhen", () => {
     expect(text).toContain("27");
     expect(text).not.toContain("22");
   });
+});
+
+test("says how long ago in words", () => {
+  const now = Date.parse("2026-10-31T12:00:00Z");
+  const ago = (ms: number) => formatAgo(new Date(now - ms), now);
+
+  expect(ago(10_000)).toBe("just now");
+  expect(ago(4 * 60_000)).toBe("4 min ago");
+  expect(ago(2 * 3_600_000)).toBe("2 h ago");
+  expect(ago(26 * 3_600_000)).toBe("yesterday");
+  expect(ago(3 * 86_400_000)).toBe("3 days ago");
 });

@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 
 import { launchLabel, type InstalledServer, type ServerDetails, type ServerState } from "@openmcp/contracts";
 
@@ -14,6 +14,7 @@ import { useServerDetails } from "./useServers";
 import { SignOutButton } from "./ServerSignIn";
 import { ServerLogs } from "./ServerLogs";
 import { Stat } from "@/components/Stat";
+import { useNow } from "@/hooks/useNow";
 
 type Tab = { value: string; label: string; count?: number; content: ReactNode };
 
@@ -145,17 +146,4 @@ function ServerStats({
       )}
     </dl>
   );
-}
-
-function useNow(ticking: boolean) {
-  const [now, setNow] = useState(Date.now);
-
-  useEffect(() => {
-    if (!ticking) return;
-
-    const timer = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(timer);
-  }, [ticking]);
-
-  return now;
 }
