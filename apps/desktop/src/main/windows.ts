@@ -1,6 +1,8 @@
-import { app, BrowserWindow, shell, type BrowserWindowConstructorOptions } from "electron";
+import { app, BrowserWindow, nativeTheme, shell, type BrowserWindowConstructorOptions } from "electron";
 import { pathToFileURL } from "node:url";
 import { join } from "node:path";
+
+import { frameOptions, TOOLBAR_HEIGHT, windowColors } from "./theme";
 
 const RENDERER_DIR = join(__dirname, "../renderer");
 
@@ -12,9 +14,9 @@ function devServerUrl() {
 
 export function createWindow(page: Page, options: BrowserWindowConstructorOptions, query: Record<string, string> = {}) {
   const window = new BrowserWindow({
+    backgroundColor: windowColors(nativeTheme.shouldUseDarkColors).background,
     ...options,
     show: false,
-    backgroundColor: "#ffffff",
     webPreferences: {
       preload: join(__dirname, "../preload/index.js"),
       sandbox: true,
@@ -35,7 +37,26 @@ export function createWindow(page: Page, options: BrowserWindowConstructorOption
 }
 
 export function createMainWindow() {
-  return createWindow("index", { width: 1200, height: 800, minWidth: 900, minHeight: 600, title: "OpenMCP" });
+  const window = createWindow("index", {
+    width: 1200,
+    height: 800,
+    minWidth: 900,
+    minHeight: 600,
+    title: "OpenMCP",
+    ...frameOptions(process.platform, nativeTheme.shouldUseDarkColors)
+  });
+
+  const recolor = () => {
+    const { background, symbols } = windowColors(nativeTheme.shouldUseDarkColors);
+    window.setBackgroundColor(background);
+    if (process.platform !== "darwin") {
+      window.setTitleBarOverlay({ color: background, symbolColor: symbols, height: TOOLBAR_HEIGHT });
+    }
+  };
+  nativeTheme.on("updated", recolor);
+  window.on("closed", () => nativeTheme.off("updated", recolor));
+
+  return window;
 }
 
 export function isAppUrl(url: string) {
