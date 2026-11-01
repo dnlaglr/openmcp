@@ -8,7 +8,7 @@ import { ipcErrorMessage } from "@/lib/ipcError";
 import { ServerTable } from "./ServerTable";
 import { useServers } from "./useServers";
 
-function ServersContent({ navigate }: PageProps) {
+function ServersContent({ navigate }: Pick<PageProps, "navigate">) {
   const { data: servers, error, isPending } = useServers();
 
   if (isPending) return null;

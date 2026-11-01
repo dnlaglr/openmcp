@@ -9,7 +9,7 @@ import {
   type Tool
 } from "@modelcontextprotocol/client";
 
-import type { ServerState } from "@openmcp/contracts";
+import type { ServerCounts, ServerState } from "@openmcp/contracts";
 
 import type { Supervisor } from "../servers/supervisor";
 

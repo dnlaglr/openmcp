@@ -1,7 +1,5 @@
 import type { ServerState, ServerStatus } from "@openmcp/contracts";
 
-import type { LedStatus } from "../../components/StatusLed";
-
 const labels: Record<ServerStatus, string> = {
   stopped: "Stopped",
   starting: "Starting",
@@ -20,7 +18,7 @@ export function statusLabel(state: ServerState, remote: boolean, waiting: boolea
   return labels[state.status];
 }
 
-export const ledStatus = (state: ServerState, waiting: boolean): LedStatus => (waiting ? "starting" : state.status);
+export const ledStatus = (state: ServerState, waiting: boolean): ServerStatus => (waiting ? "starting" : state.status);
 
 export function primaryAction(state: ServerState, waiting: boolean): Primary {
   if (waiting) return { kind: "startOver", label: "Start over" };
