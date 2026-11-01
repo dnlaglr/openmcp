@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useMutationState, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 
 import { MAX_LOG_LINES, type IpcInput, type LogLine, type ServerState } from "@openmcp/contracts";
@@ -6,6 +6,8 @@ import { MAX_LOG_LINES, type IpcInput, type LogLine, type ServerState } from "@o
 const serversKey = ["servers"] as const;
 const statesKey = ["server-states"] as const;
 const logsKey = (id: string) => ["server-logs", id] as const;
+const countsKey = ["server-counts"] as const;
+const signInKey = ["sign-in"] as const;
 
 export type ServerAction = "start" | "stop" | "restart";
 
@@ -72,7 +74,17 @@ export function useServerAction() {
 const signedInKey = ["servers-signed-in"] as const;
 
 export function useSignIn() {
-  return useMutation({ mutationFn: (id: string) => window.api.invoke("servers:signIn", { id }) });
+  return useMutation({
+    mutationKey: signInKey,
+    mutationFn: (id: string) => window.api.invoke("servers:signIn", { id })
+  });
+}
+
+export function useSigningIn() {
+  return useMutationState({
+    filters: { mutationKey: signInKey, status: "pending" },
+    select: (mutation) => mutation.state.variables as string
+  });
 }
 
 export function useSignOut() {
@@ -104,6 +116,28 @@ export function useServerLogs(id: string) {
   );
 
   return useQuery({ queryKey: logsKey(id), queryFn: () => window.api.invoke("servers:logs", { id }) });
+}
+
+export function useServerCounts() {
+  const queryClient = useQueryClient();
+
+  useEffect(
+    () => window.api.on("servers:counts", (counts) => queryClient.setQueryData(countsKey, counts)),
+    [queryClient]
+  );
+
+  const { data: counts = [] } = useQuery({ queryKey: countsKey, queryFn: () => window.api.invoke("servers:counts") });
+  return (id: string) => counts.find((entry) => entry.id === id);
+}
+
+export function useSetAutostart() {
+  const queryClient = useQueryClient();
+
+  // Stays pending until the list holds the new value, so a switch showing `variables` doesn't flick back.
+  return useMutation({
+    mutationFn: (input: IpcInput<"servers:setAutostart">) => window.api.invoke("servers:setAutostart", input),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: serversKey })
+  });
 }
 
 export function useServerDetails(state: ServerState) {

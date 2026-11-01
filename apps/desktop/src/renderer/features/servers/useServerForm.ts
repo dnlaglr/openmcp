@@ -2,8 +2,8 @@ import { useState } from "react";
 
 import { emptyServerForm, parseServerForm, type ServerForm, type ServerFormErrors } from "./serverForm";
 
-export function useServerForm() {
-  const [form, setForm] = useState<ServerForm>(emptyServerForm);
+export function useServerForm(initial: ServerForm = emptyServerForm) {
+  const [form, setForm] = useState<ServerForm>(initial);
   const [errors, setErrors] = useState<ServerFormErrors>({});
 
   function update(patch: Partial<ServerForm>) {
