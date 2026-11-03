@@ -1,7 +1,7 @@
 import { Activity, LayoutGrid, Monitor, Server, Settings, type LucideIcon } from "lucide-react";
 
 export type Page = "servers" | "agents" | "activity" | "catalog" | "settings";
-export type NavigateParams = { serverId?: string };
+export type NavigateParams = { serverId?: string; tab?: "logs" };
 export type Navigate = (page: Page, params?: NavigateParams) => void;
 export type PageProps = { navigate: Navigate; params: NavigateParams };
 

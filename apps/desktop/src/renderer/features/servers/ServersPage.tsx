@@ -102,7 +102,7 @@ export function ServersPage({ navigate, params }: PageProps) {
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState(params.serverId ?? null);
   const [lastParams, setLastParams] = useState(params);
-  const [tab, setTab] = useState<InspectorTab>("overview");
+  const [tab, setTab] = useState<InspectorTab>(params.tab ?? "overview");
   const [sheet, setSheet] = useState<SheetState | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [settingUp, setSettingUp] = useState(false);
@@ -112,6 +112,7 @@ export function ServersPage({ navigate, params }: PageProps) {
   if (params !== lastParams) {
     setLastParams(params);
     if (params.serverId) setSelected(params.serverId);
+    if (params.tab) setTab(params.tab);
   }
 
   const all = servers.data ?? [];

@@ -129,19 +129,18 @@ test("installs a registry server with its secret in the keychain and opens it in
     await expect(page.getByRole("heading", { name: "Popular" })).toBeHidden();
     await page.getByRole("button", { name: "Install E2E e2e-server" }).click();
 
-    const dialog = page.getByRole("dialog");
-    await expect(dialog.getByLabel("Name", { exact: true })).toHaveValue("e2e");
-    await expect(dialog.getByText("npx -y ./openmcp-e2e-missing@1.0.0")).toBeVisible();
+    const sheet = page.getByRole("dialog");
+    await expect(sheet.getByLabel("Name", { exact: true })).toHaveValue("e2e");
+    await expect(sheet.getByText("npx -y ./openmcp-e2e-missing@1.0.0")).toBeVisible();
 
-    await dialog.getByRole("button", { name: "Install", exact: true }).click();
-    await expect(dialog.getByText("Enter a value for E2E_TOKEN")).toBeVisible();
+    await sheet.getByRole("button", { name: "Install", exact: true }).click();
+    await expect(sheet.getByText("Enter a value for E2E_TOKEN")).toBeVisible();
 
-    await dialog.getByLabel("E2E_TOKEN").fill(secretValue);
-    await dialog.getByRole("button", { name: "Install", exact: true }).click();
-    await expect(dialog).toBeHidden();
-
-    await page.getByRole("button", { name: "Open in Servers" }).click();
-    await openDetails(page, "e2e");
+    await sheet.getByLabel("E2E_TOKEN").fill(secretValue);
+    await sheet.getByRole("button", { name: "Install", exact: true }).click();
+    await expect(sheet.getByText("Saved e2e")).toBeVisible();
+    await expect(sheet.getByText("Couldn’t start", { exact: true })).toBeVisible();
+    await sheet.getByRole("button", { name: "Fix settings" }).click();
     await expect(details(page, "e2e")).toContainText("npx -y ./openmcp-e2e-missing@1.0.0");
     await expect(details(page, "e2e")).toContainText("MCP Registry · v1.0.0");
     expect(databaseContents(dataDir)).not.toContain(secretValue);
@@ -159,46 +158,49 @@ test("updates an installed registry server in place and keeps its secret", () =>
     const registry = await serveRegistry();
     const app = await launch(dataDir, { OPENMCP_REGISTRY_URL: registry.url });
     const page = await app.firstWindow();
-    const dialog = page.getByRole("dialog");
-    const update = dialog.getByRole("button", { name: /^Update( and restart)?$/ });
+    // The "Updated" toast is a dialog too, so the update sheet is found by name.
+    const sheet = page.getByRole("dialog");
+    const updateSheet = page.getByRole("dialog", { name: "Update “e2e”" });
+    const update = updateSheet.getByRole("button", { name: /^Update( and restart)?$/ });
+    const updateButton = page.getByRole("button", { name: "Update E2E e2e-server to v1.1.0" });
 
     await page.getByRole("button", { name: "Catalog", exact: true }).click();
     await page.getByLabel("Search servers").fill("e2e");
     await page.getByRole("button", { name: "Install E2E e2e-server" }).click();
-    await dialog.getByLabel("E2E_TOKEN").fill(secretValue);
-    // 1.1.0 is published while the dialog is open, so the check that runs after install finds it.
+    await sheet.getByLabel("E2E_TOKEN").fill(secretValue);
+    // 1.1.0 is published while the sheet is open, so the check that runs after install finds it.
     registry.setLatest("1.1.0");
-    await dialog.getByRole("button", { name: "Install", exact: true }).click();
-    await expect(dialog).toBeHidden();
-    await expect(page.getByRole("button", { name: "Update to v1.1.0" })).toBeVisible();
+    await sheet.getByRole("button", { name: "Install", exact: true }).click();
+    await expect(sheet.getByText("Saved e2e")).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(sheet).toBeHidden();
 
-    await page.getByRole("button", { name: "Open in Servers" }).click();
-    await openMenu(page, "e2e", "Update to v1.1.0…");
-    await expect(dialog.getByText("v1.0.0 → v1.1.0")).toBeVisible();
-    await expect(dialog.getByLabel("E2E_TOKEN")).toBeHidden();
+    await updateButton.click();
+    await expect(updateSheet.getByText("v1.0.0 → v1.1.0")).toBeVisible();
+    await expect(updateSheet.getByLabel("E2E_TOKEN")).toBeHidden();
 
-    // The publisher edits 1.1.0 after the check, so the swap is refused and the dialog reopens as a form.
+    // The publisher edits 1.1.0 after the check, so the swap is refused and the sheet reopens as a form.
     registry.requireWorkspace();
     await update.click();
     await expect(
-      dialog.getByText("This update changes the server's settings. Open it again to review them.")
+      updateSheet.getByText("This update changes the server's settings. Open it again to review them.")
     ).toBeVisible();
-    await dialog.getByRole("button", { name: "Cancel" }).click();
-    await expect(dialog).toBeHidden();
+    await updateSheet.getByRole("button", { name: "Cancel" }).click();
+    await expect(updateSheet).toBeHidden();
 
-    await openMenu(page, "e2e", "Update to v1.1.0…");
-    await expect(dialog.getByLabel("E2E_TOKEN")).toHaveAttribute(
+    await updateButton.click();
+    await expect(updateSheet.getByLabel("E2E_TOKEN")).toHaveAttribute(
       "placeholder",
       "Stored in your keychain. Leave blank to keep."
     );
     await update.click();
-    await expect(dialog.getByText("Enter a value for E2E_WORKSPACE")).toBeVisible();
-    await dialog.getByLabel("E2E_WORKSPACE").fill("team");
+    await expect(updateSheet.getByText("Enter a value for E2E_WORKSPACE")).toBeVisible();
+    await updateSheet.getByLabel("E2E_WORKSPACE").fill("team");
     await update.click();
-    // The "Updated" toast is a dialog too.
-    await expect(page.getByRole("dialog", { name: "Update “e2e”" })).toBeHidden();
-    await expect(row(page, "e2e").getByText("Update", { exact: true })).toHaveCount(0);
+    await expect(updateSheet).toBeHidden();
+    await expect(updateButton).toBeHidden();
 
+    await page.getByRole("button", { name: "Servers", exact: true }).click();
     await openDetails(page, "e2e");
     await expect(details(page, "e2e")).toContainText("npx -y ./openmcp-e2e-missing@1.1.0");
     await expect(details(page, "e2e")).toContainText("MCP Registry · v1.1.0");
@@ -221,13 +223,11 @@ test("installs a remote-only registry server and connects to it", () =>
     await page.getByLabel("Search servers").fill("e2e");
     await page.getByRole("button", { name: "Install E2E e2e-remote" }).click();
 
-    const dialog = page.getByRole("dialog");
-    await expect(dialog.getByText(remote.url)).toBeVisible();
-    await dialog.getByLabel("token", { exact: true }).fill(secretValue);
-    await dialog.getByRole("button", { name: "Install", exact: true }).click();
-    await expect(dialog).toBeHidden();
-
-    await page.getByRole("button", { name: "Open in Servers" }).click();
+    const sheet = page.getByRole("dialog");
+    await expect(sheet.getByText(remote.url)).toBeVisible();
+    await sheet.getByLabel(/^token/).fill(secretValue);
+    await sheet.getByRole("button", { name: "Install", exact: true }).click();
+    await sheet.getByRole("button", { name: "Open in Servers" }).click();
     await expect(row(page, "e2e-remote")).toContainText("Running");
     expect(databaseContents(dataDir)).not.toContain(secretValue);
     expect(await inKeychain(app, `Bearer ${secretValue}`)).toBe(true);

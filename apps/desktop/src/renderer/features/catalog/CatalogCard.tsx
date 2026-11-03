@@ -1,69 +1,30 @@
-import { Check } from "lucide-react";
+import type { CatalogEntry } from "@openmcp/contracts";
 
-import type { AvailableUpdate, CatalogEntry, InstalledServer } from "@openmcp/contracts";
+import { EntryActions, type CatalogActions } from "./EntryActions";
+import { Tag } from "@/components/Tag";
 
-import {
-  Card,
-  CardAction,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+type CatalogCardProps = { entry: CatalogEntry; index: number; actions: CatalogActions };
 
-type CatalogCardProps = {
-  entry: CatalogEntry;
-  installed: InstalledServer | undefined;
-  update: AvailableUpdate | undefined;
-  onInstall: () => void;
-  onUpdate: (update: AvailableUpdate) => void;
-  onOpenServers: () => void;
-};
-
-export function CatalogCard({ entry, installed, update, onInstall, onUpdate, onOpenServers }: CatalogCardProps) {
+export function CatalogCard({ entry, index, actions }: CatalogCardProps) {
   return (
-    <Card size="sm">
-      <CardHeader>
-        <CardTitle className="min-w-0 truncate">{entry.title}</CardTitle>
-        <CardDescription className="min-w-0 truncate font-mono text-xs">{entry.name}</CardDescription>
-        <CardAction>
-          <Badge variant="secondary">{entry.runner}</Badge>
-        </CardAction>
-      </CardHeader>
-
-      <CardContent className="flex-1">
-        <p className="line-clamp-2 text-muted-foreground">{entry.description}</p>
-      </CardContent>
-
-      <CardFooter className="flex-wrap justify-between gap-2">
-        <div className="flex flex-wrap gap-1">
-          {entry.deprecated !== null && <Badge variant="destructive">Deprecated</Badge>}
-        </div>
-
-        {installed ? (
-          <div className="flex items-center gap-2">
-            {update ? (
-              <Button size="sm" onClick={() => onUpdate(update)}>
-                Update to v{update.entry.version}
-              </Button>
-            ) : (
-              <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                <Check className="size-3.5" /> Installed
-              </span>
-            )}
-            <Button variant="outline" size="sm" onClick={onOpenServers}>
-              Open in Servers
-            </Button>
-          </div>
-        ) : (
-          <Button size="sm" aria-label={`Install ${entry.title}`} onClick={onInstall}>
-            Install
-          </Button>
+    <div
+      className="flex min-h-[150px] animate-[up_var(--d3)_var(--ease-out)_both] flex-col gap-1.5 rounded-[10px] p-3.5 ring-1 ring-border transition-shadow duration-(--d2) hover:shadow-md"
+      style={{ animationDelay: `${Math.min(index, 10) * 25}ms` }}
+    >
+      <div className="flex items-center gap-2">
+        <b className="min-w-0 flex-1 truncate font-semibold">{entry.title}</b>
+        <Tag mono>{entry.runner}</Tag>
+      </div>
+      <span className="truncate font-mono text-[11px] leading-[14px] text-muted-foreground">{entry.name}</span>
+      <p className="line-clamp-3 flex-1 text-[12.5px] leading-[17px] text-muted-foreground">{entry.description}</p>
+      <div className="flex min-h-6 items-center justify-end gap-2">
+        {entry.deprecated !== null && (
+          <Tag tone="danger" className="mr-auto">
+            Deprecated
+          </Tag>
         )}
-      </CardFooter>
-    </Card>
+        <EntryActions entry={entry} compact={false} actions={actions} />
+      </div>
+    </div>
   );
 }
