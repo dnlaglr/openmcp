@@ -33,7 +33,8 @@ function contextFor(gateway: Gateway): ClientContext {
       appData: app.getPath("appData"),
       localAppData: process.env.LOCALAPPDATA,
       packages: storePackages(),
-      claudeConfigDir: process.env.CLAUDE_CONFIG_DIR
+      claudeConfigDir: process.env.CLAUDE_CONFIG_DIR,
+      codexHome: process.env.CODEX_HOME
     },
     name: entryName(app.isPackaged),
     bridge: {

@@ -9,7 +9,8 @@ const env: ClientEnv = {
   appData: "/Users/ada/Library/Application Support",
   localAppData: undefined,
   packages: ["Claude_pzs8sxrjxfjjc"],
-  claudeConfigDir: undefined
+  claudeConfigDir: undefined,
+  codexHome: undefined
 };
 const connection = { url: "http://127.0.0.1:7465/mcp", token: "t0ken" };
 const bridge = { command: "/Applications/OpenMCP.app/Contents/MacOS/OpenMCP", script: "/app.asar/dist/main/bridge.js" };
@@ -23,7 +24,8 @@ test("finds each client's config under the user's folders", () => {
     [at(join(env.appData, "Claude"), "claude_desktop_config.json")],
     [{ file: join(env.home, ".claude.json"), dir: join(env.home, ".claude") }],
     [at(join(env.home, ".cursor"), "mcp.json")],
-    [at(join(env.appData, "Code", "User"), "mcp.json")]
+    [at(join(env.appData, "Code", "User"), "mcp.json")],
+    [at(join(env.home, ".codex"), "config.toml")]
   ]);
 });
 
@@ -49,10 +51,15 @@ test("uses CLAUDE_CONFIG_DIR for Claude Code when it is set", () => {
   ]);
 });
 
-test("points Claude Code, Cursor and VS Code at the gateway over http with the token", () => {
+test("uses CODEX_HOME for Codex when it is set", () => {
+  expect(client("codex").locate({ ...env, codexHome: "/tmp/codex" })).toEqual([at("/tmp/codex", "config.toml")]);
+});
+
+test("points Claude Code, Cursor, VS Code and Codex at the gateway over http with the token", () => {
   expect(client("claude-code").entry(connection, bridge)).toEqual({ type: "http", url: connection.url, headers });
   expect(client("cursor").entry(connection, bridge)).toEqual({ url: connection.url, headers });
   expect(client("vscode").entry(connection, bridge)).toEqual({ type: "http", url: connection.url, headers });
+  expect(client("codex").entry(connection, bridge)).toEqual({ url: connection.url, http_headers: headers });
 });
 
 test("runs the bridge with OpenMCP's own executable for Claude Desktop", () => {
@@ -66,6 +73,7 @@ test("runs the bridge with OpenMCP's own executable for Claude Desktop", () => {
 test("wraps the snippet in the client's own key", () => {
   expect(JSON.parse(snippet(client("vscode"), "openmcp", { a: 1 }))).toEqual({ servers: { openmcp: { a: 1 } } });
   expect(JSON.parse(snippet(client("cursor"), "openmcp", { a: 1 }))).toEqual({ mcpServers: { openmcp: { a: 1 } } });
+  expect(snippet(client("codex"), "openmcp", { a: 1 })).toBe("[mcp_servers.openmcp]\na = 1");
 });
 
 test("names the entry openmcp-dev outside packaged builds", () => {
@@ -81,14 +89,16 @@ test("matches calls to agents by the client name they send", () => {
     { client: "cursor-vscode", at: at(11) },
     { client: "Visual Studio Code", at: at(12) },
     { client: "Visual Studio Code - Insiders", at: at(13) },
-    { client: "mcp-inspector", at: at(14) }
+    { client: "mcp-inspector", at: at(14) },
+    { client: "codex-mcp-client", at: at(15) }
   ];
 
   expect(CLIENTS.map((candidate) => [candidate.id, lastSeen(candidate, calls)])).toEqual([
     ["claude-desktop", at(9)],
     ["claude-code", at(10)],
     ["cursor", at(11)],
-    ["vscode", at(13)]
+    ["vscode", at(13)],
+    ["codex", at(15)]
   ]);
   expect(lastSeen(client("cursor"), [])).toBeNull();
 });

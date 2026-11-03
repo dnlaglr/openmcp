@@ -40,7 +40,8 @@ function setup() {
       appData: join(root, "appdata"),
       localAppData: undefined,
       packages: [],
-      claudeConfigDir: undefined
+      claudeConfigDir: undefined,
+      codexHome: undefined
     },
     name: "openmcp",
     bridge: { command: "openmcp", script: "bridge.js" },
@@ -141,6 +142,25 @@ test("refuses to write a file it can't parse", async () => {
   await expect(apply(cursor, context, true)).rejects.toThrow(`Fix ${file} first. Syntax error on line 1`);
   expect(readFileSync(file, "utf8")).toBe(`{ "mcpServers": `);
   expect(existsSync(backups)).toBe(false);
+});
+
+test("connects and disconnects Codex through its TOML config, backing it up as TOML", async () => {
+  const { context } = setup();
+  const codex = CLIENTS.find((client) => client.id === "codex")!;
+  const file = join(context.env.home, ".codex", "config.toml");
+  const original = `model = "gpt-5"\n\n[mcp_servers.other]\ncommand = "x"\n`;
+  mkdirSync(join(context.env.home, ".codex"));
+  writeFileSync(file, original);
+
+  await apply(codex, context, true);
+  expect(readFileSync(file, "utf8")).toContain(`[mcp_servers.openmcp]\nurl = "${context.connection.url}"\n`);
+  expect(await inspect(codex, context)).toMatchObject({ status: "connected", path: file, error: null });
+
+  await apply(codex, context, false);
+  expect(readFileSync(file, "utf8")).toBe(original);
+  const saved = readdirSync(join(context.backups, "codex"));
+  expect(saved.length).toBeGreaterThan(0);
+  expect(saved.every((name) => name.endsWith(".toml"))).toBe(true);
 });
 
 test("says a client is missing when its folder isn't there", async () => {

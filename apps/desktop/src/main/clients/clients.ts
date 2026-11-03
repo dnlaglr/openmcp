@@ -2,6 +2,8 @@ import { join } from "node:path";
 
 import { CLIENT_NAMES, type ClientId, type GatewayConnection } from "@openmcp/contracts";
 
+import { setEntry, type ConfigFormat } from "./config";
+
 export type ClientEnv = {
   platform: NodeJS.Platform;
   home: string;
@@ -9,6 +11,7 @@ export type ClientEnv = {
   localAppData: string | undefined;
   packages: string[];
   claudeConfigDir: string | undefined;
+  codexHome: string | undefined;
 };
 
 export type Location = { file: string; dir: string };
@@ -17,7 +20,8 @@ export type Bridge = { command: string; script: string };
 export type ClientDefinition = {
   id: ClientId;
   name: string;
-  key: "mcpServers" | "servers";
+  format: ConfigFormat;
+  key: "mcpServers" | "servers" | "mcp_servers";
   hint: string | null;
   locate: (env: ClientEnv) => Location[];
   entry: (connection: GatewayConnection, bridge: Bridge) => Record<string, unknown>;
@@ -42,6 +46,7 @@ export const CLIENTS: ClientDefinition[] = [
   {
     id: "claude-desktop",
     name: "Claude Desktop",
+    format: "json",
     key: "mcpServers",
     hint: "Restart Claude Desktop to apply.",
     locate: (env) => claudeDesktopDirs(env).map((dir) => at(dir, "claude_desktop_config.json")),
@@ -54,6 +59,7 @@ export const CLIENTS: ClientDefinition[] = [
   {
     id: "claude-code",
     name: "Claude Code",
+    format: "json",
     key: "mcpServers",
     hint: "New Claude Code sessions pick this up.",
     locate: ({ home, claudeConfigDir }) => [
@@ -64,6 +70,7 @@ export const CLIENTS: ClientDefinition[] = [
   {
     id: "cursor",
     name: "Cursor",
+    format: "json",
     key: "mcpServers",
     hint: null,
     locate: ({ home }) => [at(join(home, ".cursor"), "mcp.json")],
@@ -72,17 +79,29 @@ export const CLIENTS: ClientDefinition[] = [
   {
     id: "vscode",
     name: "VS Code",
+    format: "json",
     key: "servers",
     hint: null,
     locate: ({ appData }) => [at(join(appData, "Code", "User"), "mcp.json")],
     entry: (connection) => ({ type: "http", ...http(connection) })
+  },
+  {
+    id: "codex",
+    name: "Codex",
+    format: "toml",
+    key: "mcp_servers",
+    hint: "New Codex sessions pick this up.",
+    locate: ({ home, codexHome }) => [at(codexHome ?? join(home, ".codex"), "config.toml")],
+    entry: ({ url, token }) => ({ url, http_headers: { Authorization: `Bearer ${token}` } })
   }
 ];
 
 export const entryName = (packaged: boolean) => (packaged ? "openmcp" : "openmcp-dev");
 
 export const snippet = (client: ClientDefinition, name: string, entry: unknown) =>
-  JSON.stringify({ [client.key]: { [name]: entry } }, null, 2);
+  client.format === "toml"
+    ? setEntry("toml", "", client.key, name, entry).trimEnd()
+    : JSON.stringify({ [client.key]: { [name]: entry } }, null, 2);
 
 export type LastCall = { client: string; at: Date };
 

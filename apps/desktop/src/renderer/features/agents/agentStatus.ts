@@ -8,7 +8,8 @@ export const monograms: Record<ClientId, string> = {
   "claude-desktop": "CD",
   "claude-code": "CC",
   cursor: "Cu",
-  vscode: "VS"
+  vscode: "VS",
+  codex: "Cx"
 };
 
 const statuses: Record<ClientStatus, { label: string; led: ServerStatus }> = {

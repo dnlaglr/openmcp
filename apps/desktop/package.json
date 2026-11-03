@@ -12,6 +12,7 @@
     "typecheck": "tsc -p tsconfig.node.json && tsc -p tsconfig.web.json"
   },
   "dependencies": {
+    "@decimalturn/toml-patch": "3.3.1",
     "@modelcontextprotocol/client": "2.4.0",
     "@modelcontextprotocol/node": "2.1.2",
     "@modelcontextprotocol/server": "2.4.0",

@@ -44,6 +44,9 @@ importers:
 
   apps/desktop:
     dependencies:
+      '@decimalturn/toml-patch':
+        specifier: 3.3.1
+        version: 3.3.1
       '@modelcontextprotocol/client':
         specifier: 2.4.0
         version: 2.4.0
@@ -315,6 +318,10 @@ packages:
   '@csstools/css-tokenizer@4.0.2':
     resolution: {integrity: sha512-OoKoR0f76dCY666JlcbhmVTs2drYj1GUXZTYTcbUgJjh9Nv41aFfZ21bPQTERm5+L5cBDo466NltB2lplS5GBw==}
     engines: {node: '>=20.19.0'}
+
+  '@decimalturn/toml-patch@3.3.1':
+    resolution: {integrity: sha512-bevRGAUJonKWPBEY0tmn6HxEsPS1hJquwoIRNg/WTJnN+/0J6nfomSkn4FBtGlw1dUEt8tkS97oR0wwy3bo2HQ==}
+    engines: {node: '>=16'}
 
   '@electron-internal/extract-zip@1.0.6':
     resolution: {integrity: sha512-/aQLgFDdCSnwChfUwqekSmE1q2dCTzhUy5saIHBb5vyYn5LzWaKPaIz1wM0lDMCZYBoIG4svJNvAJb6vkI8BuA==}
@@ -3022,6 +3029,8 @@ snapshots:
 
   '@csstools/css-tokenizer@4.0.2':
     optional: true
+
+  '@decimalturn/toml-patch@3.3.1': {}
 
   '@electron-internal/extract-zip@1.0.6': {}
 
