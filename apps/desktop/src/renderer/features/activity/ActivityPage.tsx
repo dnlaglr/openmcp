@@ -1,100 +1,173 @@
-import { Activity } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import { X } from "lucide-react";
+import { cn } from "cn";
 
 import { ActivityRange, type ActivityScope } from "@openmcp/contracts";
 
-import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
-import { ActivityBreadcrumb, ActivityBreakdown, type Drill } from "./ActivityBreakdown";
-import { formatCount, formatDuration, formatRate } from "./activityFormat";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { PageHeader } from "@/components/PageHeader";
-import { useActivitySummary } from "./useActivity";
-import { ipcErrorMessage } from "@/lib/ipcError";
-import { ActivityTrail } from "./ActivityTrail";
-import { Stat } from "@/components/Stat";
+import { formatAgo, formatCount, formatDuration, formatRate, RANGES } from "./activityFormat";
+import { useActivitySeries, useActivitySummary, useActivityTrail } from "./useActivity";
+import { useServers } from "@/features/servers/useServers";
+import { ErrorState } from "@/components/ErrorState";
+import { Segmented } from "@/components/Segmented";
+import { TopLists, type Filter } from "./TopLists";
+import type { PageProps } from "@/lib/navigation";
+import { Skeleton } from "@/components/Skeleton";
+import { ActivityChart } from "./ActivityChart";
+import { Toolbar } from "@/components/Toolbar";
+import { useNow } from "@/hooks/useNow";
+import { CallLog } from "./CallLog";
 
-const spans: Record<ActivityRange, string> = { "1h": "hour", "24h": "24 hours", "7d": "7 days", "30d": "30 days" };
+const link = "text-xs font-medium text-primary hover:underline";
 
-function ActivityContent({
-  scope,
-  drill,
-  onDrill
-}: {
-  scope: ActivityScope;
-  drill: Drill;
-  onDrill: (drill: Drill) => void;
-}) {
-  const { data: summary, error, isPending } = useActivitySummary(scope);
+function LiveStatus({ newest }: { newest?: Date }) {
+  const now = useNow(true);
+  const [heard, setHeard] = useState<number | null>(null);
 
-  if (isPending) return null;
-  if (error)
-    return (
-      <p role="alert" className="text-sm text-destructive">
-        {ipcErrorMessage(error)}
-      </p>
-    );
+  useEffect(() => window.api.on("activity:changed", () => setHeard(Date.now())), []);
 
-  if (summary.groups.length === 0) {
-    return (
-      <div className="flex flex-col gap-4">
-        {drill.server && <ActivityBreadcrumb drill={drill} onDrill={onDrill} />}
-        <Empty className="border border-dashed">
-          <EmptyHeader>
-            <EmptyMedia variant="icon">
-              <Activity />
-            </EmptyMedia>
-            <EmptyTitle>No calls in the last {spans[scope.range]}</EmptyTitle>
-            <EmptyDescription>Calls your agents make through the gateway show up here.</EmptyDescription>
-          </EmptyHeader>
-        </Empty>
-      </div>
-    );
-  }
-
-  const { totals } = summary;
+  const last = Math.max(heard ?? 0, newest?.getTime() ?? 0);
+  if (last === 0) return "No calls yet";
 
   return (
-    <div className="flex flex-col gap-6">
-      <dl className="grid grid-cols-2 gap-x-6 gap-y-3 rounded-2xl bg-muted/50 p-4 sm:grid-cols-4">
-        <Stat label="Calls">{formatCount(totals.calls)}</Stat>
-        <Stat label="Failed">
-          {formatRate(totals.failures, totals.calls)}
-          <span className="font-normal text-muted-foreground"> · {formatCount(totals.failures)}</span>
-        </Stat>
-        <Stat label="Median">{formatDuration(totals.p50)}</Stat>
-        <Stat label="p95">{formatDuration(totals.p95)}</Stat>
-      </dl>
-      <ActivityBreakdown groups={summary.groups} drill={drill} onDrill={onDrill} />
-      <ActivityTrail scope={scope} />
+    <>
+      <span
+        key={heard ?? "idle"}
+        className="led animate-[led-pop_var(--d4)_var(--spring)]"
+        data-status="running"
+        aria-hidden
+      />
+      Live · last call {formatAgo(new Date(last), now)}
+    </>
+  );
+}
+
+function Chip({ kind, value, label, onClear }: { kind: string; value: string; label: string; onClear: () => void }) {
+  return (
+    <span className="inline-flex h-6 animate-pop items-center gap-1.5 rounded-full bg-accent pr-1 pl-2.5 text-xs text-accent-foreground">
+      <span className="opacity-70">{kind}</span>
+      <b className="font-semibold">{value}</b>
+      <button
+        type="button"
+        aria-label={label}
+        onClick={onClear}
+        className="grid size-4 place-items-center rounded-full outline-none hover:bg-tint-2 focus-visible:focus-halo"
+      >
+        <X className="size-3" />
+      </button>
+    </span>
+  );
+}
+
+function Kpi({ label, bad = false, children }: { label: string; bad?: boolean; children: ReactNode }) {
+  return (
+    <div
+      className={cn(
+        "flex flex-col gap-1 rounded-[10px] px-3.5 py-3 ring-1 ring-border transition-colors duration-(--d3)",
+        bad && "bg-destructive/6 ring-destructive/25"
+      )}
+    >
+      <dt className="text-[11px] font-semibold text-muted-foreground">{label}</dt>
+      <dd className={cn("text-xl leading-6 font-semibold tabular-nums", bad && "text-destructive")}>{children}</dd>
     </div>
   );
 }
 
-export function ActivityPage() {
+function PageSkeleton() {
+  return (
+    <div className="delayed flex flex-col gap-4">
+      <Skeleton className="h-16 w-full rounded-[10px]" />
+      <Skeleton className="h-[190px] w-full rounded-[10px]" />
+      <div className="grid grid-cols-2 gap-4">
+        <Skeleton className="h-[210px] w-full rounded-[10px]" />
+        <Skeleton className="h-[210px] w-full rounded-[10px]" />
+      </div>
+    </div>
+  );
+}
+
+export function ActivityPage({ navigate, params }: PageProps) {
   const [range, setRange] = useState<ActivityRange>("24h");
-  const [drill, setDrill] = useState<Drill>({});
-  const scope: ActivityScope = { range, serverId: drill.server?.id, call: drill.call };
+  const [filter, setFilter] = useState<Filter>(() => (params.serverId ? { serverId: params.serverId } : {}));
+  const { data: servers = [] } = useServers();
+
+  const scope: ActivityScope = { range, serverId: filter.serverId, call: filter.call };
+  const summary = useActivitySummary(scope);
+  const series = useActivitySeries(scope);
+  const trail = useActivityTrail(scope, false);
+
+  const copy = RANGES[range];
+  const serverName =
+    filter.serverId && (servers.find((server) => server.id === filter.serverId)?.name ?? "Removed server");
+  const totals = summary.data?.totals;
+  const rate = totals && totals.calls > 0 ? totals.failures / totals.calls : 0;
+
+  let subtitle: ReactNode = "Loading…";
+  if (summary.isSuccess) subtitle = <LiveStatus newest={trail.data?.pages[0]?.[0]?.at} />;
 
   return (
-    <>
-      <PageHeader
-        title="Activity"
-        description="Calls your agents made through the gateway."
-        actions={
-          <Tabs value={range} onValueChange={setRange}>
-            <TabsList>
-              {ActivityRange.options.map((option) => (
-                <TabsTrigger key={option} value={option}>
-                  {option}
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </Tabs>
-        }
-      />
-      <div className="min-h-0 flex-1 overflow-auto p-6">
-        <ActivityContent scope={scope} drill={drill} onDrill={setDrill} />
-      </div>
-    </>
+    <div className="flex min-h-0 flex-1 flex-col">
+      <Toolbar title="Activity" subtitle={summary.error ? undefined : subtitle}>
+        <Segmented
+          label="Time range"
+          options={ActivityRange.options.map((option) => ({ value: option, label: option }))}
+          value={range}
+          onChange={setRange}
+        />
+      </Toolbar>
+
+      {summary.error ? (
+        <ErrorState title="Couldn’t load activity" error={summary.error} onRetry={() => void summary.refetch()} />
+      ) : (
+        <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-auto px-6 pt-4 pb-8">
+          <div className="flex min-h-6 flex-wrap items-center gap-2">
+            {serverName ? (
+              <>
+                <Chip kind="Server" value={serverName} label="Remove the server filter" onClear={() => setFilter({})} />
+                {filter.call && (
+                  <Chip
+                    kind="Tool"
+                    value={filter.call.name}
+                    label="Remove the tool filter"
+                    onClear={() => setFilter({ serverId: filter.serverId })}
+                  />
+                )}
+                <button type="button" className={link} onClick={() => setFilter({})}>
+                  Clear
+                </button>
+              </>
+            ) : (
+              <span className="text-xs text-muted-foreground">
+                Everything in the {copy.words}. Click a server or tool below to narrow it down.
+              </span>
+            )}
+          </div>
+
+          {totals ? (
+            <>
+              <dl className="grid grid-cols-4 gap-2.5">
+                <Kpi label="Calls">
+                  <span key={totals.calls} className="inline-block animate-up">
+                    {formatCount(totals.calls)}
+                  </span>
+                </Kpi>
+                <Kpi label="Failed" bad={rate >= 0.02}>
+                  {formatRate(totals.failures, totals.calls)}
+                  <span className="ml-1.5 text-xs font-normal text-muted-foreground">
+                    {formatCount(totals.failures)}
+                  </span>
+                </Kpi>
+                <Kpi label="Median">{formatDuration(totals.p50)}</Kpi>
+                <Kpi label="p95">{formatDuration(totals.p95)}</Kpi>
+              </dl>
+              <ActivityChart range={range} buckets={series.data} onConnect={() => navigate("agents")} />
+              <TopLists range={range} filter={filter} serverName={serverName || undefined} onFilter={setFilter} />
+              <CallLog scope={scope} calls={totals.calls} words={copy.words} filtered={filter.serverId !== undefined} />
+            </>
+          ) : (
+            <PageSkeleton />
+          )}
+        </div>
+      )}
+    </div>
   );
 }
