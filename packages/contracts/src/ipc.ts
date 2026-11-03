@@ -1,7 +1,14 @@
 import { z } from "zod";
 
+import {
+  ActivityBucket,
+  ActivityEntry,
+  ActivityQuery,
+  ActivityScope,
+  ActivitySummary,
+  ActivitySummaryQuery
+} from "./activity";
 import { AvailableUpdate, CatalogEntry, CatalogInstall, CatalogResults, CatalogSearch, CatalogUpdate } from "./catalog";
-import { ActivityEntry, ActivityQuery, ActivityScope, ActivitySummary } from "./activity";
 import { LogLine, ServerCounts, ServerDetails, ServerState } from "./runtime";
 import { InstalledServer, NewCustomServer, ServerUpdate } from "./server";
 import { GatewayConnection, GatewayPort, GatewayState } from "./gateway";
@@ -46,7 +53,8 @@ export const ipc = {
   "clients:disconnect": { input: ClientTarget, output: ClientState },
   "clients:reveal": { input: ClientTarget.extend({ target: z.enum(["config", "backups"]) }), output: z.void() },
 
-  "activity:summary": { input: ActivityScope, output: ActivitySummary },
+  "activity:summary": { input: ActivitySummaryQuery, output: ActivitySummary },
+  "activity:series": { input: ActivityScope, output: z.array(ActivityBucket) },
   "activity:list": { input: ActivityQuery, output: z.array(ActivityEntry) }
 } as const;
 

@@ -30,6 +30,19 @@ export const ActivityScope = z.object({
 });
 export type ActivityScope = z.infer<typeof ActivityScope>;
 
+export const ACTIVITY_BUCKETS: Record<ActivityRange, { count: number; ms: number }> = {
+  "1h": { count: 60, ms: 60_000 },
+  "24h": { count: 48, ms: 30 * 60_000 },
+  "7d": { count: 42, ms: 4 * HOUR_MS },
+  "30d": { count: 30, ms: 24 * HOUR_MS }
+};
+
+export const ActivitySummaryQuery = ActivityScope.extend({ groupBy: z.enum(["server", "call"]).optional() });
+export type ActivitySummaryQuery = z.infer<typeof ActivitySummaryQuery>;
+
+export const ActivityBucket = z.object({ at: z.date(), calls: z.int(), failures: z.int() });
+export type ActivityBucket = z.infer<typeof ActivityBucket>;
+
 export const ActivityCursor = z.object({ at: z.date(), id: z.int() });
 export type ActivityCursor = z.infer<typeof ActivityCursor>;
 

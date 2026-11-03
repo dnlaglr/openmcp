@@ -242,3 +242,15 @@ test("finds each client's latest call", () => {
     ])
   );
 });
+
+test("groups calls across servers when asked", () => {
+  recordActivity(db, call(minutesAgo(5)));
+  recordActivity(db, { ...call(minutesAgo(4)), serverId: files, serverName: "files", name: "read_file" });
+  recordActivity(db, { ...call(minutesAgo(3)), serverId: files, serverName: "files", name: "read_file" });
+
+  const { groups } = summarizeActivity(db, { since, groupBy: "call" });
+  expect(groups.map((group) => [group.serverName, group.name, group.calls])).toEqual([
+    ["files", "read_file", 2],
+    ["github", "create_issue", 1]
+  ]);
+});

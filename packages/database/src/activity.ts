@@ -1,13 +1,20 @@
 import { and, asc, desc, eq, gte, lt, max, ne, or } from "drizzle-orm";
 
-import type { ActivityCall, ActivityCursor, ActivityGroup, ActivityStats, ActivitySummary } from "@openmcp/contracts";
+import type {
+  ActivityBucket,
+  ActivityCall,
+  ActivityCursor,
+  ActivityGroup,
+  ActivityStats,
+  ActivitySummary
+} from "@openmcp/contracts";
 
 import { activity, type ActivityRow, type NewActivity } from "./schema";
 import type { Database } from "./client";
 
 const MAX_ERROR_LENGTH = 1000;
 
-export type ActivityFilter = { since: Date; serverId?: string; call?: ActivityCall };
+export type ActivityFilter = { since: Date; serverId?: string; call?: ActivityCall; groupBy?: "server" | "call" };
 export type ActivityListOptions = ActivityFilter & { failuresOnly: boolean; before?: ActivityCursor; limit: number };
 
 type Sample = Pick<ActivityRow, "serverId" | "serverName" | "kind" | "name" | "durationMs" | "outcome">;
@@ -66,7 +73,7 @@ function stats(samples: Sample[]): ActivityStats {
 
 const label = (group: ActivityGroup) => group.name ?? group.serverName ?? "";
 
-export function summarizeActivity(db: Database, { call, ...filter }: ActivityFilter): ActivitySummary {
+export function summarizeActivity(db: Database, { call, groupBy, ...filter }: ActivityFilter): ActivitySummary {
   // Pulls every row in range on each refresh, fine for ~100k rows (30 days of personal use).
   // If that grows, move the percentiles into SQL with row_number() over (partition by …).
   const samples = db
@@ -83,10 +90,10 @@ export function summarizeActivity(db: Database, { call, ...filter }: ActivityFil
     .orderBy(asc(activity.durationMs))
     .all();
 
-  const byCall = filter.serverId !== undefined;
+  const byCall = groupBy ? groupBy === "call" : filter.serverId !== undefined;
   const grouped = new Map<string | null, Sample[]>();
   for (const sample of samples) {
-    const key = byCall ? `${sample.kind}:${sample.name}` : sample.serverId;
+    const key = byCall ? `${sample.serverId}:${sample.kind}:${sample.name}` : sample.serverId;
     const group = grouped.get(key);
 
     if (group) group.push(sample);
@@ -107,6 +114,35 @@ export function summarizeActivity(db: Database, { call, ...filter }: ActivityFil
 
   const selected = call ? samples.filter((sample) => sample.kind === call.kind && sample.name === call.name) : samples;
   return { totals: stats(selected), groups };
+}
+
+export type ActivitySeriesOptions = Omit<ActivityFilter, "since" | "groupBy"> & {
+  end: Date;
+  count: number;
+  ms: number;
+};
+
+export function seriesActivity(db: Database, { end, count, ms, ...filter }: ActivitySeriesOptions): ActivityBucket[] {
+  const start = end.getTime() - count * ms;
+  const buckets = Array.from({ length: count }, (_, index) => ({
+    at: new Date(start + index * ms),
+    calls: 0,
+    failures: 0
+  }));
+
+  const rows = db
+    .select({ at: activity.at, outcome: activity.outcome })
+    .from(activity)
+    .where(and(...inScope({ since: new Date(start), ...filter }), lt(activity.at, end)))
+    .all();
+
+  for (const row of rows) {
+    const bucket = buckets[Math.floor((row.at.getTime() - start) / ms)];
+    bucket.calls += 1;
+    if (row.outcome !== "ok") bucket.failures += 1;
+  }
+
+  return buckets;
 }
 
 export function lastCallByClient(db: Database): { client: string; at: Date }[] {
