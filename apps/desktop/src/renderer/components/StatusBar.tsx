@@ -4,6 +4,7 @@ import { gatewayUrl } from "@openmcp/contracts";
 
 import { useServers, useServerStates } from "@/features/servers/useServers";
 import { useGatewayState } from "@/features/settings/useGateway";
+import { useAgentCounts } from "@/features/agents/useClients";
 import type { Navigate } from "@/lib/navigation";
 import { StatusLed } from "./StatusLed";
 import { Tooltip } from "./Tooltip";
@@ -58,6 +59,12 @@ export function StatusBar({ navigate }: { navigate: Navigate }) {
   });
   const running = servers.filter((server) => stateOf(server.id).status === "running").length;
   const separator = <span aria-hidden className="h-3 w-px bg-border" />;
+  const agents = useAgentCounts();
+  const plural = (count: number) => (count === 1 ? "agent" : "agents");
+
+  let agentsLine = "No agents connected";
+  if (agents.active) agentsLine = `${agents.active} ${plural(agents.active)} active`;
+  else if (agents.connected) agentsLine = `${agents.connected} ${plural(agents.connected)} connected`;
 
   return (
     <footer className="col-span-2 flex items-center gap-1 border-t bg-sidebar px-2 text-[11.5px] whitespace-nowrap text-muted-foreground">
@@ -66,6 +73,8 @@ export function StatusBar({ navigate }: { navigate: Navigate }) {
       <span className={item}>
         {running} of {servers.length} servers running
       </span>
+      {separator}
+      <span className={item}>{agentsLine}</span>
       <span className="ml-auto" />
       {separator}
       {version && <span className={`${item} font-mono`}>v{version}</span>}

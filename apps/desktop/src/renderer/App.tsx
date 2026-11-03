@@ -4,14 +4,14 @@ import type { Navigate, NavigateParams, Page, PageProps } from "@/lib/navigation
 import { ActivityPage } from "@/features/activity/ActivityPage";
 import { SettingsPage } from "@/features/settings/SettingsPage";
 import { CatalogPage } from "@/features/catalog/CatalogPage";
-import { ClientsPage } from "@/features/clients/ClientsPage";
 import { ServersPage } from "@/features/servers/ServersPage";
+import { AgentsPage } from "@/features/agents/AgentsPage";
 import { StatusBar } from "@/components/StatusBar";
 import { Sidebar } from "@/components/Sidebar";
 
 const pages: Record<Page, ComponentType<PageProps>> = {
   servers: ServersPage,
-  agents: ClientsPage,
+  agents: AgentsPage,
   activity: ActivityPage,
   catalog: CatalogPage,
   settings: SettingsPage

@@ -1,6 +1,7 @@
 import { Fragment } from "react";
 
 import { navGroups, settingsItem, type NavItem, type Page } from "@/lib/navigation";
+import { useAgentCounts } from "@/features/agents/useClients";
 import { useServers } from "@/features/servers/useServers";
 import { Logo } from "./Logo";
 
@@ -8,7 +9,12 @@ type SidebarProps = { current: Page; onSelect: (page: Page) => void };
 
 export function Sidebar({ current, onSelect }: SidebarProps) {
   const { data: servers } = useServers();
-  const counts: Partial<Record<Page, string>> = { servers: servers && String(servers.length) };
+  const agents = useAgentCounts();
+  const agentsCount = agents.active ? `${agents.active} active` : `${agents.connected} of ${agents.installed}`;
+  const counts: Partial<Record<Page, string>> = {
+    servers: servers && String(servers.length),
+    agents: agents.installed > 0 ? agentsCount : undefined
+  };
 
   const item = ({ page, label, icon: Icon }: NavItem) => (
     <button

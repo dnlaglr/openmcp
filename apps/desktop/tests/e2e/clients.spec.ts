@@ -14,21 +14,29 @@ test("connects and disconnects Claude Code through its config file", () =>
     const page = await app.firstWindow();
     await page.getByRole("button", { name: "Agents", exact: true }).click();
 
-    const row = page.getByRole("row", { name: /Claude Code/ });
+    const row = page.getByRole("group", { name: "Claude Code" });
     await expect(row.getByText("Not connected")).toBeVisible();
+    await expect(row.getByText("Never used")).toBeVisible();
 
-    await row.getByRole("button", { name: "Connect", exact: true }).click();
+    await row.getByRole("button", { name: "Connect Claude Code" }).click();
     await expect(row.getByText("Connected", { exact: true })).toBeVisible();
-    await expect(row.getByText("New Claude Code sessions pick this up.")).toBeVisible();
+    await expect(row.getByText("Waiting for its first call")).toBeVisible();
+    await expect(page.getByText("Connected Claude Code · New Claude Code sessions pick this up.")).toBeVisible();
 
     const entry = JSON.parse(readFileSync(file, "utf8")).mcpServers["openmcp-dev"];
     expect(entry).toMatchObject({ type: "http", url: expect.stringMatching(/^http:\/\/127\.0\.0\.1:\d+\/mcp$/) });
     expect(entry.headers.Authorization).toMatch(/^Bearer \S+$/);
 
+    await row.getByRole("button", { name: "Show details for Claude Code" }).click();
+    await expect(row.getByText("OpenMCP added this entry to the file:")).toBeVisible();
+    await expect(row.getByText(entry.headers.Authorization.slice("Bearer ".length))).toHaveCount(0);
+
     await row.getByRole("button", { name: "Disconnect", exact: true }).click();
     await expect(row.getByText("Not connected")).toBeVisible();
+    await expect(page.getByText("Disconnected Claude Code · a backup was kept")).toBeVisible();
     expect(JSON.parse(readFileSync(file, "utf8")).mcpServers).toEqual({});
     expect(readdirSync(join(`${dataDir}-dev`, "client-backups", "claude-code"))).toHaveLength(1);
+    await expect(row.getByRole("button", { name: "Open backups · 1" })).toBeVisible();
 
     await app.close();
   }));

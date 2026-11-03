@@ -1,8 +1,15 @@
-import type { ClientState, ClientStatus, ServerStatus } from "@openmcp/contracts";
+import type { ClientId, ClientState, ClientStatus, ServerStatus } from "@openmcp/contracts";
 
 import { formatAgo } from "../activity/activityFormat";
 
 export const ACTIVE_MS = 120_000;
+
+export const monograms: Record<ClientId, string> = {
+  "claude-desktop": "CD",
+  "claude-code": "CC",
+  cursor: "Cu",
+  vscode: "VS"
+};
 
 const statuses: Record<ClientStatus, { label: string; led: ServerStatus }> = {
   missing: { label: "Not installed", led: "stopped" },
