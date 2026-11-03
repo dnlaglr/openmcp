@@ -17,10 +17,10 @@ async function startAgent(page: Page, server: string) {
   await sheet.getByRole("button", { name: "Add server" }).click();
   await expect(page.getByRole("group", { name: server, exact: true })).toContainText("Running");
 
-  await page.getByRole("button", { name: "Settings", exact: true }).click();
-  await expect(page.getByLabel("Token", { exact: true })).not.toHaveValue("");
-  const url = await page.getByLabel("URL", { exact: true }).inputValue();
-  const token = await page.getByLabel("Token", { exact: true }).inputValue();
+  const { url, token } = (await page.evaluate("window.api.invoke('gateway:connection')")) as {
+    url: string;
+    token: string;
+  };
 
   await page.getByRole("button", { name: "Activity", exact: true }).click();
   await expect(page.getByText("No calls in the last 24 hours")).toBeVisible();
