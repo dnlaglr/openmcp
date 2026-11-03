@@ -71,6 +71,7 @@ export function ImportServers({ clients }: { clients: ClientState[] }) {
   );
 
   function toggle(key: string, checked: boolean) {
+    importServers.reset();
     setUnchecked((current) => {
       const next = new Set(current);
       if (checked) next.delete(key);
@@ -121,7 +122,7 @@ export function ImportServers({ clients }: { clients: ClientState[] }) {
       >
         <div className="-mx-2.5 flex max-h-[55vh] flex-col gap-3 overflow-auto">
           {found.map(({ client, entries }) => (
-            <fieldset key={client.id} className="flex flex-col">
+            <fieldset key={client.id} className="flex min-w-0 flex-col">
               <legend className="px-2.5 pb-1 text-[11px] font-semibold text-muted-foreground">{client.name}</legend>
               {entries.map((entry) => (
                 <ImportRow
