@@ -3,17 +3,39 @@ import { useEffect } from "react";
 
 import type { ClientId, ClientState, IpcInput } from "@openmcp/contracts";
 
+import { isActiveNow } from "./agentStatus";
+import { useNow } from "@/hooks/useNow";
+
 const clientsKey = ["clients"] as const;
 
 export function useClients() {
   const queryClient = useQueryClient();
 
-  useEffect(
-    () => window.api.on("clients:changed", () => void queryClient.invalidateQueries({ queryKey: clientsKey })),
-    [queryClient]
-  );
+  useEffect(() => {
+    const refresh = () => void queryClient.invalidateQueries({ queryKey: clientsKey });
+    const offClients = window.api.on("clients:changed", refresh);
+    const offActivity = window.api.on("activity:changed", refresh);
+
+    return () => {
+      offClients();
+      offActivity();
+    };
+  }, [queryClient]);
 
   return useQuery({ queryKey: clientsKey, queryFn: () => window.api.invoke("clients:list") });
+}
+
+// Ticks so "active" lapses two minutes after the last call without waiting for an event.
+export function useAgentCounts() {
+  const { data: clients = [] } = useClients();
+  const now = useNow(true);
+  const installed = clients.filter((client) => client.status !== "missing");
+
+  return {
+    installed: installed.length,
+    connected: installed.filter((client) => client.status === "connected" || client.status === "outdated").length,
+    active: installed.filter((client) => isActiveNow(client, now)).length
+  };
 }
 
 export function useClientAction() {

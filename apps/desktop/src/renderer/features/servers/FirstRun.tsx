@@ -5,7 +5,7 @@ import type { CatalogEntry, ClientState } from "@openmcp/contracts";
 
 import { useInstalledServer, useInstallServer, usePopular } from "@/features/catalog/useCatalog";
 import { initialInstallForm, toInstallInput } from "@/features/catalog/installForm";
-import { useClientAction, useClients } from "@/features/clients/useClients";
+import { useClientAction, useClients } from "@/features/agents/useClients";
 import { useServerCounts, useServerStates } from "./useServers";
 import { StatusLed } from "@/components/StatusLed";
 import { Skeleton } from "@/components/Skeleton";

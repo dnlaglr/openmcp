@@ -3,7 +3,7 @@ import { FolderOpen, History, type LucideIcon } from "lucide-react";
 import type { ClientState, ClientStatus } from "@openmcp/contracts";
 
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { useClientAction, useRevealClient } from "./useClients";
+import { useClientAction, useRevealClient } from "@/features/agents/useClients";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { ClientStatusBadge } from "./ClientStatusBadge";
 import { CopyButton } from "@/components/CopyButton";

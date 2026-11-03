@@ -1,7 +1,7 @@
 import { Table, TableBody, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useClients } from "@/features/agents/useClients";
 import { PageHeader } from "@/components/PageHeader";
 import { ipcErrorMessage } from "@/lib/ipcError";
-import { useClients } from "./useClients";
 import { ClientRow } from "./ClientRow";
 
 function ClientsContent() {
