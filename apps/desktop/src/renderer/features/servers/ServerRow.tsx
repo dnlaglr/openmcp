@@ -49,7 +49,7 @@ export function ServerRow(props: ServerRowProps) {
     <div
       role="group"
       aria-label={server.name}
-      className="collapse"
+      className="presence"
       data-row-id={server.id}
       data-collapsed={presence === "exiting" || undefined}
       data-entering={presence === "entering" || undefined}

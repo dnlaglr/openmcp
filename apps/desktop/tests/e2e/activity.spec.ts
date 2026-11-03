@@ -8,14 +8,14 @@ const fixture = join(__dirname, "fixtures/stdioServer.mts");
 const marker = "e2e-activity-argument";
 
 async function startAgent(page: Page, server: string) {
-  await page.getByRole("button", { name: "Add Server" }).first().click();
-  const dialog = page.getByRole("dialog");
-  await dialog.getByLabel("Name", { exact: true }).fill(server);
-  await dialog.getByLabel("Command").fill("node");
-  await dialog.getByLabel("Arguments").fill(fixture);
-  await dialog.getByRole("button", { name: "Add server" }).click();
-  await page.getByRole("button", { name: `Start ${server}` }).click();
-  await expect(page.getByRole("cell", { name: "Running", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Add server" }).click();
+  await page.getByRole("menuitem", { name: "Local command…" }).click();
+  const sheet = page.getByRole("dialog");
+  await sheet.getByLabel("Name", { exact: true }).fill(server);
+  await sheet.getByLabel("Command").fill("node");
+  await sheet.getByLabel("Arguments").fill(fixture);
+  await sheet.getByRole("button", { name: "Add server" }).click();
+  await expect(page.getByRole("group", { name: server, exact: true })).toContainText("Running");
 
   await page.getByRole("button", { name: "Settings", exact: true }).click();
   await expect(page.getByLabel("Token", { exact: true })).not.toHaveValue("");

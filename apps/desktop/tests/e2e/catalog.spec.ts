@@ -1,4 +1,4 @@
-import { expect, test, type ElectronApplication } from "@playwright/test";
+import { expect, test, type ElectronApplication, type Page } from "@playwright/test";
 import { createServer, type Server } from "node:http";
 import type * as keyring from "@napi-rs/keyring";
 import type { AddressInfo } from "node:net";
@@ -8,6 +8,26 @@ import { databaseContents, launch, withDataDir } from "./app";
 import { serveHttpFixture } from "./fixtures/httpServer";
 
 const secretValue = `e2e-catalog-${randomUUID()}`;
+
+const row = (page: Page, name: string) => page.getByRole("group", { name, exact: true });
+const details = (page: Page, name: string) => page.getByRole("complementary", { name: `${name} details` });
+const openDetails = (page: Page, name: string) =>
+  row(page, name)
+    .getByRole("button", { name: `Show details for ${name}` })
+    .click();
+
+async function openMenu(page: Page, name: string, item: string) {
+  await page
+    .getByRole("button", { name: `More actions for ${name}` })
+    .first()
+    .click();
+  await page.getByRole("menuitem", { name: item }).click();
+}
+
+async function remove(page: Page, name: string) {
+  await openMenu(page, name, "Remove…");
+  await page.getByRole("alertdialog").getByRole("button", { name: "Remove" }).click();
+}
 
 // Read inside the app that wrote the secret: macOS prompts any other process for keychain access, hanging CI.
 const inKeychain = (electronApp: ElectronApplication, value = secretValue) =>
@@ -119,14 +139,13 @@ test("installs a registry server with its secret in the keychain and opens it in
     await expect(dialog).toBeHidden();
 
     await page.getByRole("button", { name: "Open in Servers" }).click();
-    await expect(page.getByRole("cell", { name: "e2e", exact: true })).toBeVisible();
-    await expect(page.getByRole("cell", { name: "Catalog", exact: true })).toBeVisible();
-    await expect(page.getByRole("cell", { name: "npx -y ./openmcp-e2e-missing@1.0.0" })).toBeVisible();
+    await openDetails(page, "e2e");
+    await expect(details(page, "e2e")).toContainText("npx -y ./openmcp-e2e-missing@1.0.0");
+    await expect(details(page, "e2e")).toContainText("MCP Registry · v1.0.0");
     expect(databaseContents(dataDir)).not.toContain(secretValue);
     expect(await inKeychain(app)).toBe(true);
 
-    await page.getByRole("button", { name: "Remove e2e" }).click();
-    await page.getByRole("alertdialog").getByRole("button", { name: "Remove" }).click();
+    await remove(page, "e2e");
     await expect(page.getByText("No servers yet")).toBeVisible();
     expect(await inKeychain(app)).toBe(false);
     await app.close();
@@ -152,9 +171,7 @@ test("updates an installed registry server in place and keeps its secret", () =>
     await expect(page.getByRole("button", { name: "Update to v1.1.0" })).toBeVisible();
 
     await page.getByRole("button", { name: "Open in Servers" }).click();
-    await page.getByRole("button", { name: "Update available" }).click();
-    await expect(page.getByRole("heading", { name: "Updates" })).toBeVisible();
-    await page.getByRole("button", { name: "Update to v1.1.0" }).click();
+    await openMenu(page, "e2e", "Update to v1.1.0…");
     await expect(dialog.getByText("v1.0.0 → v1.1.0")).toBeVisible();
     await expect(dialog.getByLabel("E2E_TOKEN")).toBeHidden();
 
@@ -165,8 +182,9 @@ test("updates an installed registry server in place and keeps its secret", () =>
       dialog.getByText("This update changes the server's settings. Open it again to review them.")
     ).toBeVisible();
     await dialog.getByRole("button", { name: "Cancel" }).click();
+    await expect(dialog).toBeHidden();
 
-    await page.getByRole("button", { name: "Update to v1.1.0" }).click();
+    await openMenu(page, "e2e", "Update to v1.1.0…");
     await expect(dialog.getByLabel("E2E_TOKEN")).toHaveAttribute(
       "placeholder",
       "Stored in your keychain. Leave blank to keep."
@@ -175,16 +193,16 @@ test("updates an installed registry server in place and keeps its secret", () =>
     await expect(dialog.getByText("Enter a value for E2E_WORKSPACE")).toBeVisible();
     await dialog.getByLabel("E2E_WORKSPACE").fill("team");
     await update.click();
-    await expect(dialog).toBeHidden();
-    await expect(page.getByRole("heading", { name: "Updates" })).toBeHidden();
+    // The "Updated" toast is a dialog too.
+    await expect(page.getByRole("dialog", { name: "Update “e2e”" })).toBeHidden();
+    await expect(row(page, "e2e").getByText("Update", { exact: true })).toHaveCount(0);
 
-    await page.getByRole("button", { name: "Servers", exact: true }).click();
-    await expect(page.getByRole("cell", { name: "npx -y ./openmcp-e2e-missing@1.1.0" })).toBeVisible();
-    await expect(page.getByRole("cell", { name: "Catalog", exact: true })).toBeVisible();
+    await openDetails(page, "e2e");
+    await expect(details(page, "e2e")).toContainText("npx -y ./openmcp-e2e-missing@1.1.0");
+    await expect(details(page, "e2e")).toContainText("MCP Registry · v1.1.0");
     expect(await inKeychain(app)).toBe(true);
 
-    await page.getByRole("button", { name: "Remove e2e" }).click();
-    await page.getByRole("alertdialog").getByRole("button", { name: "Remove" }).click();
+    await remove(page, "e2e");
     await expect(page.getByText("No servers yet")).toBeVisible();
     await app.close();
     registry.server.close();
@@ -208,12 +226,11 @@ test("installs a remote-only registry server and connects to it", () =>
     await expect(dialog).toBeHidden();
 
     await page.getByRole("button", { name: "Open in Servers" }).click();
-    await expect(page.getByRole("cell", { name: "Running", exact: true })).toBeVisible();
+    await expect(row(page, "e2e-remote")).toContainText("Running");
     expect(databaseContents(dataDir)).not.toContain(secretValue);
     expect(await inKeychain(app, `Bearer ${secretValue}`)).toBe(true);
 
-    await page.getByRole("button", { name: "Remove e2e-remote" }).click();
-    await page.getByRole("alertdialog").getByRole("button", { name: "Remove" }).click();
+    await remove(page, "e2e-remote");
     await expect(page.getByText("No servers yet")).toBeVisible();
     expect(await inKeychain(app, `Bearer ${secretValue}`)).toBe(false);
     await app.close();

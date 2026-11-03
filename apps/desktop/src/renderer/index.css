@@ -799,24 +799,24 @@
     animation: spin 700ms linear infinite;
   }
 
-  .collapse {
+  .presence {
     display: grid;
     grid-template-rows: 1fr;
     transition:
       grid-template-rows var(--d3) var(--ease-move),
       opacity var(--d2) var(--ease-in);
   }
-  .collapse > * {
+  .presence > * {
     min-height: 0;
   }
-  .collapse[data-collapsed] {
+  .presence[data-collapsed] {
     grid-template-rows: 0fr;
     opacity: 0;
   }
-  .collapse:is([data-collapsed], [data-entering]) > * {
+  .presence:is([data-collapsed], [data-entering]) > * {
     overflow: hidden;
   }
-  .collapse[data-entering] {
+  .presence[data-entering] {
     animation: expand var(--d3) var(--ease-out) both;
   }
 }
