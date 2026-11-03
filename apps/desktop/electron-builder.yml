@@ -5,6 +5,8 @@ directories:
   buildResources: resources
 files:
   - dist/{main,preload,renderer}/**
+  # The tray loads this by path; buildResources is excluded from the app unless listed.
+  - resources/icon.png
   - "!node_modules/@napi-rs/keyring-*/**"
   - node_modules/@napi-rs/keyring-${platform}-${arch}*/**
 extraResources:
