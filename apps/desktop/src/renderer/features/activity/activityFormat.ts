@@ -1,3 +1,5 @@
+import type { ActivityRange } from "@openmcp/contracts";
+
 import { formatTime, formatUptime } from "../servers/serverDetails";
 
 const counts = new Intl.NumberFormat();
@@ -36,3 +38,25 @@ export function formatDuration(ms: number | null) {
 
 export const formatWhen = (at: Date, now = new Date()) =>
   at.toDateString() === now.toDateString() ? formatTime(at) : days.format(at);
+
+const compact = new Intl.NumberFormat(undefined, { notation: "compact" });
+const hourMinute = new Intl.DateTimeFormat(undefined, { hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
+const monthDay = new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric" });
+
+export const formatCompact = (count: number) => compact.format(count);
+
+export const RANGES: Record<ActivityRange, { words: string; bucket: string; axis: [string, string, string] }> = {
+  "1h": { words: "last hour", bucket: "1 bar = 1 minute", axis: ["60 min ago", "30 min ago", "Now"] },
+  "24h": { words: "last 24 hours", bucket: "1 bar = 30 minutes", axis: ["24 h ago", "12 h ago", "Now"] },
+  "7d": { words: "last 7 days", bucket: "1 bar = 4 hours", axis: ["7 days ago", "3½ days ago", "Now"] },
+  "30d": { words: "last 30 days", bucket: "1 bar = 1 day", axis: ["30 days ago", "15 days ago", "Now"] }
+};
+
+export function bucketWindow(at: Date, ms: number) {
+  const end = new Date(at.getTime() + ms);
+  const hours = `${hourMinute.format(at)}–${hourMinute.format(end)}`;
+
+  if (ms >= 24 * 3_600_000) return monthDay.format(at);
+  if (ms >= 4 * 3_600_000) return `${monthDay.format(at)} ${hours}`;
+  return hours;
+}

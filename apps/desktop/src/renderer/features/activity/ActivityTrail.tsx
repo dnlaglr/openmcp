@@ -31,7 +31,7 @@ export function ActivityTrail({ scope }: { scope: ActivityScope }) {
   const trail = useActivityTrail(scope, failuresOnly);
   const top = useRef<HTMLDivElement>(null);
   const end = useRef<HTMLDivElement>(null);
-  const hasNew = useLiveTrail(top);
+  const hasNew = useLiveTrail(top, 0) > 0;
 
   useVisibility(end, (visible) => {
     if (visible && trail.hasNextPage && !trail.isFetchingNextPage) void trail.fetchNextPage();

@@ -8,16 +8,23 @@ import {
 } from "@tanstack/react-query";
 import { useEffect, useEffectEvent, useRef, useState, type RefObject } from "react";
 
-import { ACTIVITY_PAGE_SIZE, type ActivityCursor, type ActivityEntry, type ActivityScope } from "@openmcp/contracts";
+import {
+  ACTIVITY_PAGE_SIZE,
+  type ActivityCursor,
+  type ActivityEntry,
+  type ActivityScope,
+  type ActivitySummaryQuery
+} from "@openmcp/contracts";
 
 import { useVisibility } from "@/hooks/useVisibility";
 
 const summaryKey = ["activity", "summary"] as const;
 const trailKey = ["activity", "trail"] as const;
+const seriesKey = ["activity", "series"] as const;
 
 type Trail = InfiniteData<ActivityEntry[], ActivityCursor | undefined>;
 
-export function useActivitySummary(scope: ActivityScope) {
+export function useActivitySummary(query: ActivitySummaryQuery) {
   const queryClient = useQueryClient();
 
   useEffect(
@@ -26,9 +33,25 @@ export function useActivitySummary(scope: ActivityScope) {
   );
 
   return useQuery({
-    queryKey: [...summaryKey, scope],
-    queryFn: () => window.api.invoke("activity:summary", scope),
+    queryKey: [...summaryKey, query],
+    queryFn: () => window.api.invoke("activity:summary", query),
     placeholderData: keepPreviousData
+  });
+}
+
+export function useActivitySeries(scope: ActivityScope) {
+  const queryClient = useQueryClient();
+
+  useEffect(
+    () => window.api.on("activity:changed", () => void queryClient.invalidateQueries({ queryKey: seriesKey })),
+    [queryClient]
+  );
+
+  return useQuery({
+    queryKey: [...seriesKey, scope],
+    queryFn: () => window.api.invoke("activity:series", scope),
+    placeholderData: keepPreviousData,
+    refetchInterval: 60_000
   });
 }
 
@@ -53,13 +76,15 @@ function refreshTrail(queryClient: QueryClient) {
   void queryClient.invalidateQueries({ queryKey: trailKey });
 }
 
-export function useLiveTrail(top: RefObject<Element | null>) {
+export function useLiveTrail(top: RefObject<Element | null>, calls: number) {
   const queryClient = useQueryClient();
   const [hasNew, setHasNew] = useState(false);
+  const [seen, setSeen] = useState(calls);
   const inView = useRef(false);
 
   useVisibility(top, (visible) => {
     inView.current = visible;
+    setSeen(calls);
     if (!visible || !hasNew) return;
 
     setHasNew(false);
@@ -69,5 +94,5 @@ export function useLiveTrail(top: RefObject<Element | null>) {
   const onChanged = useEffectEvent(() => (inView.current ? refreshTrail(queryClient) : setHasNew(true)));
   useEffect(() => window.api.on("activity:changed", () => onChanged()), []);
 
-  return hasNew;
+  return hasNew ? Math.max(1, calls - seen) : 0;
 }
