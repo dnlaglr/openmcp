@@ -7,14 +7,7 @@ import tseslint from "typescript-eslint";
 import js from "@eslint/js";
 
 export default defineConfig(
-  globalIgnores([
-    "**/dist/",
-    "**/out/",
-    "packages/database/migrations/",
-    // CLI generated shadcn/ui components
-    "apps/desktop/src/renderer/components/ui",
-    "apps/desktop/src/renderer/hooks/use-mobile.ts"
-  ]),
+  globalIgnores(["**/dist/", "**/out/", "packages/database/migrations/"]),
   js.configs.recommended,
   tseslint.configs.recommended,
   {
