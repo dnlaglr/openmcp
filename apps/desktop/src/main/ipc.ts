@@ -11,6 +11,10 @@ import {
 
 import { isAppUrl } from "./windows";
 
+const listeners = new Set<(event: IpcEvent) => void>();
+
+export const onEmit = (listener: (event: IpcEvent) => void) => void listeners.add(listener);
+
 type Handler<C extends IpcChannel> = (input: IpcHandlerInput<C>) => IpcOutput<C> | Promise<IpcOutput<C>>;
 
 export function handle<C extends IpcChannel>(channel: C, handler: Handler<C>) {
@@ -25,4 +29,5 @@ export function emit<E extends IpcEvent>(
   ...payload: IpcEventPayload<E> extends void ? [] : [IpcEventPayload<E>]
 ) {
   for (const window of BrowserWindow.getAllWindows()) window.webContents.send(event, ...payload);
+  for (const listener of listeners) listener(event);
 }

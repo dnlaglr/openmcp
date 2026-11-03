@@ -1,4 +1,4 @@
-import { app, autoUpdater, nativeTheme, session, shell, type BrowserWindow } from "electron";
+import { app, autoUpdater, clipboard, nativeTheme, session, shell, type BrowserWindow } from "electron";
 
 import { getServer, listServers, pruneActivity } from "@openmcp/database";
 
@@ -17,9 +17,9 @@ import { connector } from "./servers/connection";
 import { createSignIn } from "./servers/signIn";
 import { launchFor } from "./servers/servers";
 import { createMainWindow } from "./windows";
+import { emit, handle, onEmit } from "./ipc";
 import { createUpdater } from "./updater";
 import { openDatabase } from "./database";
-import { emit, handle } from "./ipc";
 import { createTray } from "./tray";
 
 const ALLOWED_PERMISSIONS = new Set(["clipboard-sanitized-write"]);
@@ -145,7 +145,37 @@ if (!app.requestSingleInstanceLock()) {
     void gateway.start();
 
     getMainWindow();
-    createTray({ show: showMainWindow, quit: () => app.quit() });
+    const refreshTray = createTray({
+      show: showMainWindow,
+      quit: () => app.quit(),
+      copyUrl: () => clipboard.writeText(gateway.connection().url),
+      open: (serverId) => {
+        showMainWindow();
+        emit("app:navigate", { page: "servers", serverId });
+      },
+      act: (id, action) => void supervisor[action](id),
+      signIn: (id) => {
+        showMainWindow();
+        void oauth.signIn(id);
+      }
+    });
+
+    const updateTray = () => {
+      const states = new Map(supervisor.states().map((state) => [state.id, state.status]));
+      refreshTray({
+        gateway: gateway.state(),
+        servers: listServers(db).map((server) => ({
+          id: server.id,
+          name: server.name,
+          status: states.get(server.id) ?? "stopped"
+        }))
+      });
+    };
+
+    onEmit((event) => {
+      if (event === "servers:changed" || event === "servers:state" || event === "gateway:state") updateTray();
+    });
+    updateTray();
 
     const updater = createUpdater((state) => emit("updater:state", state));
     handle("updater:state", () => updater.state());

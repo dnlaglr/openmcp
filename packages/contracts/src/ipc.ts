@@ -12,8 +12,8 @@ import { AvailableUpdate, CatalogEntry, CatalogInstall, CatalogResults, CatalogS
 import { LogLine, ServerCounts, ServerDetails, ServerState } from "./runtime";
 import { InstalledServer, NewCustomServer, ServerUpdate } from "./server";
 import { GatewayConnection, GatewayPort, GatewayState } from "./gateway";
+import { Appearance, AppPage, UpdateState } from "./app";
 import { ClientId, ClientState } from "./clients";
-import { Appearance, UpdateState } from "./app";
 import { Runtimes } from "./system";
 
 const ServerId = z.object({ id: z.uuid() });
@@ -80,7 +80,8 @@ export const ipcEvents = {
   "gateway:state": GatewayState,
   "clients:changed": z.void(),
   "activity:changed": z.void(),
-  "updater:state": UpdateState
+  "updater:state": UpdateState,
+  "app:navigate": z.object({ page: AppPage, serverId: z.uuid().optional() })
 } as const;
 
 export type IpcEvent = keyof typeof ipcEvents;
