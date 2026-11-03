@@ -12,6 +12,7 @@ import { registerSystemHandlers } from "./system/handlers";
 import { createSupervisor } from "./servers/supervisor";
 import { createUpdater, RELEASES_URL } from "./updater";
 import { createGatewayServer } from "./gateway/server";
+import { loadShellPath } from "./system/shellPath";
 import { createCatalog } from "./gateway/catalog";
 import { createGateway } from "./gateway/gateway";
 import { connector } from "./servers/connection";
@@ -67,7 +68,10 @@ if (!app.requestSingleInstanceLock()) {
     quitting = true;
   });
 
+  const shellPath = loadShellPath();
+
   const startup = app.whenReady().then(async () => {
+    await shellPath;
     session.defaultSession.setPermissionRequestHandler((_webContents, permission, callback) =>
       callback(ALLOWED_PERMISSIONS.has(permission))
     );
