@@ -13,6 +13,7 @@ import { LogLine, ServerCounts, ServerDetails, ServerState } from "./runtime";
 import { InstalledServer, NewCustomServer, ServerUpdate } from "./server";
 import { GatewayConnection, GatewayPort, GatewayState } from "./gateway";
 import { ClientId, ClientState } from "./clients";
+import { Runtimes } from "./system";
 
 const ServerId = z.object({ id: z.uuid() });
 const ClientTarget = z.object({ id: ClientId });
@@ -47,6 +48,8 @@ export const ipc = {
   "gateway:connection": { input: z.void(), output: GatewayConnection },
   "gateway:setPort": { input: z.object({ port: GatewayPort }), output: z.void() },
   "gateway:regenerateToken": { input: z.void(), output: GatewayConnection },
+
+  "system:runtimes": { input: z.void(), output: Runtimes },
 
   "clients:list": { input: z.void(), output: z.array(ClientState) },
   "clients:connect": { input: ClientTarget, output: ClientState },

@@ -7,6 +7,7 @@ import { registerGatewayHandlers } from "./gateway/handlers";
 import { registerCatalogHandlers } from "./catalog/handlers";
 import { registerClientHandlers } from "./clients/handlers";
 import { registerServerHandlers } from "./servers/handlers";
+import { registerSystemHandlers } from "./system/handlers";
 import { createSupervisor } from "./servers/supervisor";
 import { createGatewayServer } from "./gateway/server";
 import { createCatalog } from "./gateway/catalog";
@@ -135,6 +136,7 @@ if (!app.requestSingleInstanceLock()) {
     registerServerHandlers(db, supervisor, oauth, catalog);
     registerCatalogHandlers(db, supervisor, oauth);
     registerGatewayHandlers(gateway);
+    registerSystemHandlers();
     const clients = registerClientHandlers(gateway, db);
     void gateway.start();
 
