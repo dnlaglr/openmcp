@@ -6,19 +6,17 @@ import { cn } from "cn";
 import type { ClientState } from "@openmcp/contracts";
 
 import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from "@/components/Menu";
-import { agentStatus, lastActive, masked, monograms } from "./agentStatus";
+import { agentStatus, lastActive, masked } from "./agentStatus";
 import { useClientAction, useRevealClient } from "./useClients";
 import { CopyButton } from "@/components/CopyButton";
 import { StatusLed } from "@/components/StatusLed";
 import { ipcErrorMessage } from "@/lib/ipcError";
 import { Tooltip } from "@/components/Tooltip";
 import { Button } from "@/components/Button";
+import { AgentLogo } from "./AgentLogo";
 import { toast } from "@/lib/toast";
 
 export const agentColumns = "grid-cols-[minmax(0,1fr)_150px_200px_132px]";
-
-export const tile =
-  "bevel grid size-8 shrink-0 place-items-center rounded-lg text-xs font-semibold text-muted-foreground";
 
 type AgentRowProps = {
   client: ClientState;
@@ -113,7 +111,7 @@ export function AgentRow({ client, token, waiting, now, open, onOpenChange, onCo
               open && "rotate-90"
             )}
           />
-          <span className={tile}>{monograms[client.id]}</span>
+          <AgentLogo id={client.id} />
           <span className="flex min-w-0 flex-col">
             <b className="font-medium">{client.name}</b>
             {client.status === "error" ? (

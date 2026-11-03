@@ -4,16 +4,17 @@ import { cn } from "cn";
 import type { ClientId, ClientState } from "@openmcp/contracts";
 
 import { useGatewayConnection } from "@/features/settings/useGateway";
-import { agentColumns, AgentRow, tile } from "./AgentRow";
 import { useAgentCounts, useClients } from "./useClients";
 import { ErrorState } from "@/components/ErrorState";
 import { Disclosure } from "@/components/Disclosure";
-import { isWaiting, monograms } from "./agentStatus";
+import { agentColumns, AgentRow } from "./AgentRow";
 import type { PageProps } from "@/lib/navigation";
 import { Skeleton } from "@/components/Skeleton";
 import { Callout } from "@/components/Callout";
 import { Toolbar } from "@/components/Toolbar";
 import { OtherAgents } from "./OtherAgents";
+import { isWaiting } from "./agentStatus";
+import { AgentLogo } from "./AgentLogo";
 import { useNow } from "@/hooks/useNow";
 import { toast } from "@/lib/toast";
 
@@ -131,7 +132,7 @@ export function AgentsPage({ navigate }: PageProps) {
                     key={client.id}
                     className="flex min-h-[52px] items-center gap-3 rounded-[10px] px-3.5 opacity-60 ring-1 ring-border"
                   >
-                    <span className={tile}>{monograms[client.id]}</span>
+                    <AgentLogo id={client.id} />
                     <span className="flex min-w-0 flex-col">
                       <b className="font-medium">{client.name}</b>
                       <span className="truncate text-xs text-muted-foreground">
