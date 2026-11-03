@@ -139,7 +139,8 @@ test("installs a registry server with its secret in the keychain and opens it in
     await sheet.getByLabel("E2E_TOKEN").fill(secretValue);
     await sheet.getByRole("button", { name: "Install", exact: true }).click();
     await expect(sheet.getByText("Saved e2e")).toBeVisible();
-    await expect(sheet.getByText("Couldn’t start", { exact: true })).toBeVisible();
+    // npx takes a while to give up on the missing package on a cold machine.
+    await expect(sheet.getByText("Couldn’t start", { exact: true })).toBeVisible({ timeout: 20_000 });
     await sheet.getByRole("button", { name: "Fix settings" }).click();
     await expect(details(page, "e2e")).toContainText("npx -y ./openmcp-e2e-missing@1.0.0");
     await expect(details(page, "e2e")).toContainText("MCP Registry · v1.0.0");
