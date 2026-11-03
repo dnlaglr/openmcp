@@ -77,3 +77,11 @@ export function useApplyUpdate() {
     onError: () => queryClient.invalidateQueries({ queryKey: updatesKey })
   });
 }
+
+export function useRuntimes() {
+  return useQuery({
+    queryKey: ["system", "runtimes"],
+    queryFn: () => window.api.invoke("system:runtimes"),
+    staleTime: Infinity
+  });
+}
