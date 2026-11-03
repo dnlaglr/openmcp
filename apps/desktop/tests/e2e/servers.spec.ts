@@ -35,6 +35,8 @@ async function openMenu(page: Page, name: string, item: string) {
     .first()
     .click();
   await page.getByRole("menuitem", { name: item }).click();
+  // Focus returns to the trigger only once the menu has faded out.
+  await expect(page.getByRole("menu")).toHaveCount(0);
 }
 
 async function remove(page: Page, name: string) {
