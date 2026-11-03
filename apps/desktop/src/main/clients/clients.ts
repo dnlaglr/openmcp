@@ -1,6 +1,6 @@
 import { join } from "node:path";
 
-import type { ClientId, GatewayConnection } from "@openmcp/contracts";
+import { CLIENT_NAMES, type ClientId, type GatewayConnection } from "@openmcp/contracts";
 
 export type ClientEnv = {
   platform: NodeJS.Platform;
@@ -83,3 +83,11 @@ export const entryName = (packaged: boolean) => (packaged ? "openmcp" : "openmcp
 
 export const snippet = (client: ClientDefinition, name: string, entry: unknown) =>
   JSON.stringify({ [client.key]: { [name]: entry } }, null, 2);
+
+export type LastCall = { client: string; at: Date };
+
+export function lastSeen(client: ClientDefinition, calls: LastCall[]) {
+  const pattern = CLIENT_NAMES[client.id];
+  const times = calls.filter((call) => pattern.test(call.client)).map((call) => call.at.getTime());
+  return times.length > 0 ? new Date(Math.max(...times)) : null;
+}

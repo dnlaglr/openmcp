@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gte, lt, ne, or } from "drizzle-orm";
+import { and, asc, desc, eq, gte, lt, max, ne, or } from "drizzle-orm";
 
 import type { ActivityCall, ActivityCursor, ActivityGroup, ActivityStats, ActivitySummary } from "@openmcp/contracts";
 
@@ -107,4 +107,13 @@ export function summarizeActivity(db: Database, { call, ...filter }: ActivityFil
 
   const selected = call ? samples.filter((sample) => sample.kind === call.kind && sample.name === call.name) : samples;
   return { totals: stats(selected), groups };
+}
+
+export function lastCallByClient(db: Database): { client: string; at: Date }[] {
+  return db
+    .select({ client: activity.client, at: max(activity.at) })
+    .from(activity)
+    .groupBy(activity.client)
+    .all()
+    .flatMap(({ client, at }) => (client !== null && at !== null ? [{ client, at }] : []));
 }

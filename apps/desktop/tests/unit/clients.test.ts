@@ -1,7 +1,7 @@
 import { expect, test } from "vitest";
 import { join } from "node:path";
 
-import { CLIENTS, entryName, snippet, type ClientEnv } from "../../src/main/clients/clients";
+import { CLIENTS, entryName, lastSeen, snippet, type ClientEnv } from "../../src/main/clients/clients";
 
 const env: ClientEnv = {
   platform: "darwin",
@@ -71,4 +71,24 @@ test("wraps the snippet in the client's own key", () => {
 test("names the entry openmcp-dev outside packaged builds", () => {
   expect(entryName(true)).toBe("openmcp");
   expect(entryName(false)).toBe("openmcp-dev");
+});
+
+test("matches calls to agents by the client name they send", () => {
+  const at = (hour: number) => new Date(`2026-10-31T${String(hour).padStart(2, "0")}:00:00Z`);
+  const calls = [
+    { client: "claude-ai", at: at(9) },
+    { client: "claude-code", at: at(10) },
+    { client: "cursor-vscode", at: at(11) },
+    { client: "Visual Studio Code", at: at(12) },
+    { client: "Visual Studio Code - Insiders", at: at(13) },
+    { client: "mcp-inspector", at: at(14) }
+  ];
+
+  expect(CLIENTS.map((candidate) => [candidate.id, lastSeen(candidate, calls)])).toEqual([
+    ["claude-desktop", at(9)],
+    ["claude-code", at(10)],
+    ["cursor", at(11)],
+    ["vscode", at(13)]
+  ]);
+  expect(lastSeen(client("cursor"), [])).toBeNull();
 });

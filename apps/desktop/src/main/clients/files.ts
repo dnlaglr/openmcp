@@ -39,7 +39,10 @@ async function backup(dir: string, text: string) {
   await Promise.all(old.map((name) => rm(join(dir, name), { force: true })));
 }
 
-export async function inspect(client: ClientDefinition, context: ClientContext): Promise<Omit<ClientState, "hint">> {
+export async function inspect(
+  client: ClientDefinition,
+  context: ClientContext
+): Promise<Omit<ClientState, "hint" | "lastSeenAt" | "backups">> {
   const { file, dir } = pick(client.locate(context.env));
   const expected = client.entry(context.connection, context.bridge);
   const found = existsSync(dir);
@@ -88,4 +91,13 @@ export async function apply(client: ClientDefinition, context: ClientContext, co
   await writeFile(temp, bom + next, { mode });
   await chmod(temp, mode);
   await rename(temp, target);
+}
+
+export async function countBackups(dir: string) {
+  try {
+    return (await readdir(dir)).length;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return 0;
+    throw error;
+  }
 }

@@ -3,6 +3,7 @@ import { beforeEach, expect, test } from "vitest";
 import {
   activity,
   createDatabase,
+  lastCallByClient,
   listActivity,
   migrationsFolder,
   pruneActivity,
@@ -224,4 +225,20 @@ test("groups a server's calls by kind and name, and scopes the totals to the sel
       p95: 42
     }
   ]);
+});
+
+test("finds each client's latest call", () => {
+  recordActivity(db, { ...call(minutesAgo(30)), client: "claude-code" });
+  recordActivity(db, { ...call(minutesAgo(5)), client: "claude-code" });
+  recordActivity(db, { ...call(minutesAgo(10)), client: "cursor-vscode" });
+  recordActivity(db, { ...call(minutesAgo(1)), client: null });
+
+  const calls = lastCallByClient(db);
+  expect(calls).toHaveLength(2);
+  expect(calls).toEqual(
+    expect.arrayContaining([
+      { client: "claude-code", at: minutesAgo(5) },
+      { client: "cursor-vscode", at: minutesAgo(10) }
+    ])
+  );
 });

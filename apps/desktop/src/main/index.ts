@@ -135,7 +135,7 @@ if (!app.requestSingleInstanceLock()) {
     registerServerHandlers(db, supervisor, oauth, catalog);
     registerCatalogHandlers(db, supervisor, oauth);
     registerGatewayHandlers(gateway);
-    const clients = registerClientHandlers(gateway);
+    const clients = registerClientHandlers(gateway, db);
     void gateway.start();
 
     getMainWindow();

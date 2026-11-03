@@ -4,10 +4,11 @@ import { app, shell } from "electron";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
+import { lastCallByClient, type Database } from "@openmcp/database";
 import type { ClientId, ClientState } from "@openmcp/contracts";
 
-import { CLIENTS, entryName, type ClientDefinition } from "./clients";
-import { apply, inspect, pick, type ClientContext } from "./files";
+import { apply, countBackups, inspect, pick, type ClientContext } from "./files";
+import { CLIENTS, entryName, lastSeen, type ClientDefinition } from "./clients";
 import type { Gateway } from "../gateway/gateway";
 import { emit, handle } from "../ipc";
 
@@ -49,7 +50,7 @@ async function open(path: string) {
   if (failure) throw new Error(failure);
 }
 
-export function registerClientHandlers(gateway: Gateway) {
+export function registerClientHandlers(gateway: Gateway, db: Database) {
   const written = new Set<ClientId>();
   let queue: Promise<unknown> = Promise.resolve();
 
@@ -59,8 +60,13 @@ export function registerClientHandlers(gateway: Gateway) {
     return run;
   }
 
-  async function stateOf(client: ClientDefinition, context: ClientContext): Promise<ClientState> {
-    return { ...(await inspect(client, context)), hint: written.has(client.id) ? client.hint : null };
+  async function stateOf(client: ClientDefinition, context: ClientContext, calls = lastCallByClient(db)) {
+    return {
+      ...(await inspect(client, context)),
+      hint: written.has(client.id) ? client.hint : null,
+      lastSeenAt: lastSeen(client, calls),
+      backups: await countBackups(join(context.backups, client.id))
+    } satisfies ClientState;
   }
 
   async function write(client: ClientDefinition, context: ClientContext, connect: boolean) {
@@ -79,7 +85,8 @@ export function registerClientHandlers(gateway: Gateway) {
 
   handle("clients:list", () => {
     const context = contextFor(gateway);
-    return Promise.all(CLIENTS.map((client) => stateOf(client, context)));
+    const calls = lastCallByClient(db);
+    return Promise.all(CLIENTS.map((client) => stateOf(client, context, calls)));
   });
   handle("clients:connect", ({ id }) => change(id, true));
   handle("clients:disconnect", ({ id }) => change(id, false));
