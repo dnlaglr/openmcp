@@ -7,6 +7,7 @@ import type { ClientStatus } from "@openmcp/contracts";
 export type ConfigFormat = "json" | "toml";
 
 type Read = { entry: unknown } | { error: string };
+type Entries = { entries: Record<string, unknown> } | { error: string };
 type Root = { root: unknown } | { error: string };
 type StatusInput = {
   format: ConfigFormat;
@@ -48,17 +49,22 @@ function tomlRoot(text: string): Root {
   }
 }
 
-export function readEntry(format: ConfigFormat, text: string, key: string, name: string): Read {
+export function readEntries(format: ConfigFormat, text: string, key: string): Entries {
   const read = format === "toml" ? tomlRoot(text) : jsonRoot(text);
   if ("error" in read) return read;
-  if (read.root === undefined) return { entry: undefined };
+  if (read.root === undefined) return { entries: {} };
   if (!isObject(read.root)) return { error: "The file doesn't hold a JSON object." };
 
   const servers = read.root[key];
-  if (servers === undefined) return { entry: undefined };
+  if (servers === undefined) return { entries: {} };
   if (!isObject(servers)) return { error: `"${key}" isn't a ${format === "toml" ? "table" : "JSON object"}.` };
 
-  return { entry: servers[name] };
+  return { entries: servers };
+}
+
+export function readEntry(format: ConfigFormat, text: string, key: string, name: string): Read {
+  const read = readEntries(format, text, key);
+  return "error" in read ? read : { entry: read.entries[name] };
 }
 
 function setToml(text: string, key: string, name: string, entry: unknown) {

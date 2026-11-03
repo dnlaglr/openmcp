@@ -1,32 +1,25 @@
+import { configServer, SECRET } from "@openmcp/contracts";
+
 import { newEnvRow, newHeaderRow, type EnvRow, type ServerForm } from "./serverForm";
 
 export type PasteResult = { ok: true; patch: Partial<ServerForm>; skipped: number } | { ok: false; error: string };
 
 const EMPTY = "Paste a config or a command line first.";
 const UNREADABLE = "That isn’t a server config or a command line OpenMCP can read.";
-const SECRET = /key|token|secret|password|auth/i;
 
 const isObject = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
 
-function rows(record: unknown, make: () => EnvRow): EnvRow[] {
-  if (!isObject(record)) return [];
-  return Object.entries(record).map(([key, value]) => ({
-    ...make(),
-    key,
-    value: String(value),
-    secret: SECRET.test(key)
-  }));
-}
+const rows = (record: Record<string, string>, make: () => EnvRow): EnvRow[] =>
+  Object.entries(record).map(([key, value]) => ({ ...make(), key, value, secret: SECRET.test(key) }));
 
-function fromServer(name: string, config: Record<string, unknown>): Partial<ServerForm> | null {
-  if (typeof config.url === "string") {
-    return { type: "http", name, url: config.url, headers: rows(config.headers, newHeaderRow) };
-  }
-  if (typeof config.command !== "string") return null;
+function fromServer(name: string, config: unknown): Partial<ServerForm> | null {
+  const server = configServer(config);
+  if (!server) return null;
 
-  const args = Array.isArray(config.args) ? config.args.map(String) : [];
-  return { type: "stdio", name, command: config.command, args: args.join("\n"), env: rows(config.env, newEnvRow) };
+  return server.type === "http"
+    ? { type: "http", name, url: server.url, headers: rows(server.headers, newHeaderRow) }
+    : { type: "stdio", name, command: server.command, args: server.args.join("\n"), env: rows(server.env, newEnvRow) };
 }
 
 // "@scope/server-memory@1.0" → "memory", "mcp-server-fetch==2025.4.7" → "fetch".
@@ -51,7 +44,7 @@ function parseJson(text: string): PasteResult {
   const group = isObject(json.mcpServers) ? json.mcpServers : isObject(json.servers) ? json.servers : null;
   const entries: [string, unknown][] = group ? Object.entries(group) : [["", json]];
   const [first] = entries;
-  const patch = first && isObject(first[1]) ? fromServer(first[0], first[1]) : null;
+  const patch = first ? fromServer(first[0], first[1]) : null;
 
   return patch ? { ok: true, patch, skipped: entries.length - 1 } : { ok: false, error: UNREADABLE };
 }

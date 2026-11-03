@@ -137,11 +137,11 @@ if (!app.requestSingleInstanceLock()) {
       openUrl: (url) => shell.openExternal(url),
       onChange: () => emit("servers:changed")
     });
-    registerServerHandlers(db, supervisor, oauth, catalog);
+    const servers = registerServerHandlers(db, supervisor, oauth, catalog);
     registerCatalogHandlers(db, supervisor, oauth);
     registerGatewayHandlers(gateway);
     registerSystemHandlers();
-    const clients = registerClientHandlers(gateway, db);
+    const clients = registerClientHandlers(gateway, db, servers.add);
     void gateway.start();
 
     getMainWindow();

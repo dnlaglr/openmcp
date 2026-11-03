@@ -1,4 +1,5 @@
 import { listServers, setAutostart, type Database } from "@openmcp/database";
+import type { NewCustomServer } from "@openmcp/contracts";
 
 import { addCustomServer, deleteServer, editServer } from "./servers";
 import type { Catalog } from "../gateway/catalog";
@@ -16,13 +17,14 @@ export function registerServerHandlers(
 ) {
   handle("servers:list", () => listServers(db));
 
-  handle("servers:addCustom", (input) => {
+  function add(input: NewCustomServer) {
     const server = addCustomServer(db, input);
     emit("servers:changed");
 
     if (server.autostart) void supervisor.start(server.id).then(() => oauth.signInIfNeeded(server.id));
     return server;
-  });
+  }
+  handle("servers:addCustom", add);
 
   handle("servers:update", (input) => {
     const server = editServer(db, input);
@@ -66,4 +68,6 @@ export function registerServerHandlers(
 
     return describeServer(client);
   });
+
+  return { add };
 }

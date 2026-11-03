@@ -6,7 +6,7 @@ import { existsSync } from "node:fs";
 import type { ClientState, GatewayConnection } from "@openmcp/contracts";
 
 import { snippet, type Bridge, type ClientDefinition, type ClientEnv, type Location } from "./clients";
-import { readEntry, removeEntry, setEntry, statusOf } from "./config";
+import { readEntries, removeEntry, setEntry, statusOf } from "./config";
 
 const KEEP_BACKUPS = 5;
 const BOM = "\uFEFF";
@@ -69,7 +69,7 @@ export async function inspect(
   }
 }
 
-export async function apply(client: ClientDefinition, context: ClientContext, connect: boolean) {
+async function load(client: ClientDefinition, context: ClientContext) {
   const { file, dir } = pick(client.locate(context.env));
   if (!existsSync(dir)) throw new Error(`${client.name} isn't installed on this computer.`);
 
@@ -78,15 +78,25 @@ export async function apply(client: ClientDefinition, context: ClientContext, co
   const bom = raw?.startsWith(BOM) ? BOM : "";
   const text = (raw ?? "").slice(bom.length);
 
-  const read = readEntry(client.format, text, client.key, context.name);
+  const read = readEntries(client.format, text, client.key);
   if ("error" in read) throw new Error(`Fix ${file} first. ${read.error}`);
+  return { file, target, raw, bom, text, entries: read.entries };
+}
+
+export const entriesOf = async (client: ClientDefinition, context: ClientContext) =>
+  (await load(client, context)).entries;
+
+export async function apply(client: ClientDefinition, context: ClientContext, connect: boolean, remove: string[] = []) {
+  const { file, target, raw, bom, text, entries } = await load(client, context);
 
   const entry = connect ? client.entry(context.connection, context.bridge) : undefined;
-  if (isDeepStrictEqual(read.entry, entry)) return;
+  let next = remove.reduce((current, name) => removeEntry(client.format, current, client.key, name), text);
+  if (!isDeepStrictEqual(entries[context.name], entry))
+    next = entry
+      ? setEntry(client.format, next, client.key, context.name, entry)
+      : removeEntry(client.format, next, client.key, context.name);
+  if (next === text) return;
 
-  const next = entry
-    ? setEntry(client.format, text, client.key, context.name, entry)
-    : removeEntry(client.format, text, client.key, context.name);
   if (raw !== null) await backup(join(context.backups, client.id), raw, extname(file));
 
   const mode = raw === null ? 0o600 : (await stat(target)).mode & 0o777;

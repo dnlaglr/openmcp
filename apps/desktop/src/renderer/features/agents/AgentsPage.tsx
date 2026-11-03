@@ -10,6 +10,7 @@ import { Disclosure } from "@/components/Disclosure";
 import { agentColumns, AgentRow } from "./AgentRow";
 import type { PageProps } from "@/lib/navigation";
 import { Skeleton } from "@/components/Skeleton";
+import { ImportServers } from "./ImportServers";
 import { Callout } from "@/components/Callout";
 import { Toolbar } from "@/components/Toolbar";
 import { OtherAgents } from "./OtherAgents";
@@ -103,6 +104,7 @@ export function AgentsPage({ navigate }: PageProps) {
                 </p>
               </Callout>
             )}
+            <ImportServers clients={installed} />
 
             <div className="rounded-[10px] ring-1 ring-border">
               <ListHead />

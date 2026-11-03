@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 
-import { readEntry, removeEntry, setEntry, statusOf } from "../../src/main/clients/config";
+import { readEntries, readEntry, removeEntry, setEntry, statusOf } from "../../src/main/clients/config";
 
 const entry = { url: "http://127.0.0.1:7465/mcp" };
 const tomlEntry = { url: "http://127.0.0.1:7465/mcp", http_headers: { Authorization: "Bearer t0ken" } };
@@ -108,6 +108,56 @@ test("removes only the TOML entry, leaving the file as it was", () => {
 
   expect(removeEntry("toml", text, "mcp_servers", "openmcp")).toBe(codexConfig);
   expect(removeEntry("toml", codexConfig, "mcp_servers", "openmcp")).toBe(codexConfig);
+});
+
+test("lists every entry under the key, ignoring Claude Code's per-project servers", () => {
+  const text = JSON.stringify({
+    mcpServers: { memory: { command: "npx" }, openmcp: entry },
+    projects: { "/work": { mcpServers: { local: { command: "x" } } } }
+  });
+
+  expect(readEntries("json", text, "mcpServers")).toEqual({ entries: { memory: { command: "npx" }, openmcp: entry } });
+  expect(readEntries("json", "", "mcpServers")).toEqual({ entries: {} });
+  expect(readEntries("json", "{}", "servers")).toEqual({ entries: {} });
+  expect(readEntries("json", "{", "mcpServers")).toMatchObject({
+    error: expect.stringMatching(/^Syntax error on line 1/)
+  });
+});
+
+const codexServers = `${codexConfig}
+[mcp_servers.fs]
+command = "npx"
+args = ["-y", "@modelcontextprotocol/server-filesystem"]
+
+[mcp_servers.fs.env]
+ROOT = "/tmp" # scratch
+
+[mcp_servers.openmcp]
+url = "http://127.0.0.1:7465/mcp"
+`;
+
+test("lists Codex's TOML entries along with their subtables", () => {
+  expect(readEntries("toml", codexServers, "mcp_servers")).toEqual({
+    entries: {
+      other: { command: "x" },
+      fs: { command: "npx", args: ["-y", "@modelcontextprotocol/server-filesystem"], env: { ROOT: "/tmp" } },
+      openmcp: entry
+    }
+  });
+});
+
+test("removes several entries, keeping comments, other servers and the openmcp entry", () => {
+  const text = `{\n  // mine\n  "mcpServers": {\n    "a": { "command": "a" },\n    "openmcp": ${JSON.stringify(entry)},\n    "b": { "url": "https://b.dev" },\n    "c": {}\n  }\n}\n`;
+  const next = ["a", "b"].reduce((current, name) => removeEntry("json", current, "mcpServers", name), text);
+
+  expect(next).toContain("// mine");
+  expect(readEntries("json", next, "mcpServers")).toEqual({ entries: { openmcp: entry, c: {} } });
+});
+
+test("removes a TOML entry with its subtables, leaving the rest of the file as it was", () => {
+  expect(removeEntry("toml", codexServers, "mcp_servers", "fs")).toBe(
+    `${codexConfig}\n[mcp_servers.openmcp]\nurl = "http://127.0.0.1:7465/mcp"\n`
+  );
 });
 
 test("reports TOML syntax errors and an mcp_servers that isn't a table", () => {

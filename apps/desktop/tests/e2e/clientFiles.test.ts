@@ -15,7 +15,7 @@ import { afterEach, expect, test, vi } from "vitest";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { apply, inspect, type ClientContext } from "../../src/main/clients/files";
+import { apply, entriesOf, inspect, type ClientContext } from "../../src/main/clients/files";
 import { CLIENTS } from "../../src/main/clients/clients";
 
 const cursor = CLIENTS.find((client) => client.id === "cursor")!;
@@ -140,6 +140,8 @@ test("refuses to write a file it can't parse", async () => {
     error: expect.stringMatching(/^Syntax error on line 1/)
   });
   await expect(apply(cursor, context, true)).rejects.toThrow(`Fix ${file} first. Syntax error on line 1`);
+  await expect(entriesOf(cursor, context)).rejects.toThrow(`Fix ${file} first. Syntax error on line 1`);
+  await expect(apply(cursor, context, true, ["other"])).rejects.toThrow(`Fix ${file} first.`);
   expect(readFileSync(file, "utf8")).toBe(`{ "mcpServers": `);
   expect(existsSync(backups)).toBe(false);
 });
@@ -161,6 +163,33 @@ test("connects and disconnects Codex through its TOML config, backing it up as T
   const saved = readdirSync(join(context.backups, "codex"));
   expect(saved.length).toBeGreaterThan(0);
   expect(saved.every((name) => name.endsWith(".toml"))).toBe(true);
+});
+
+test("moves servers out of Claude Code's config, connecting it and keeping a backup", async () => {
+  const { context } = setup();
+  const claude = CLIENTS.find((client) => client.id === "claude-code")!;
+  const file = join(context.env.home, ".claude.json");
+  const keep = { type: "http", url: "https://mcp.linear.app/mcp" };
+  const projects = { "/work": { mcpServers: { memory: { command: "x" } } } };
+  const original = `\uFEFF${JSON.stringify({ numStartups: 3, mcpServers: { memory: { command: "npx" }, keep }, projects }, null, 2)}`;
+  mkdirSync(join(context.env.home, ".claude"));
+  writeFileSync(file, original);
+
+  expect(Object.keys(await entriesOf(claude, context))).toEqual(["memory", "keep"]);
+  await apply(claude, context, true, ["memory"]);
+
+  const text = readFileSync(file, "utf8");
+  expect(text.startsWith("\uFEFF")).toBe(true);
+  expect(JSON.parse(text.slice(1))).toEqual({
+    numStartups: 3,
+    mcpServers: {
+      openmcp: { type: "http", url: context.connection.url, headers: { Authorization: "Bearer first" } },
+      keep
+    },
+    projects
+  });
+  const [saved] = readdirSync(join(context.backups, "claude-code"));
+  expect(readFileSync(join(context.backups, "claude-code", saved), "utf8")).toBe(original);
 });
 
 test("says a client is missing when its folder isn't there", async () => {

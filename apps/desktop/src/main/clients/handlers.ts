@@ -4,12 +4,14 @@ import { app, shell } from "electron";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
-import { lastCallByClient, type Database } from "@openmcp/database";
-import type { ClientId, ClientState } from "@openmcp/contracts";
+import { ImportEntry, type ClientId, type ClientState, type NewCustomServer } from "@openmcp/contracts";
+import { lastCallByClient, listServers, type Database } from "@openmcp/database";
 
-import { apply, countBackups, inspect, pick, type ClientContext } from "./files";
+import { apply, countBackups, entriesOf, inspect, pick, type ClientContext } from "./files";
 import { CLIENTS, entryName, lastSeen, type ClientDefinition } from "./clients";
+import { against, importable, planImport } from "./imports";
 import type { Gateway } from "../gateway/gateway";
+import { launchFor } from "../servers/servers";
 import { emit, handle } from "../ipc";
 
 const clientOf = (id: ClientId) => CLIENTS.find((client) => client.id === id)!;
@@ -51,7 +53,16 @@ async function open(path: string) {
   if (failure) throw new Error(failure);
 }
 
-export function registerClientHandlers(gateway: Gateway, db: Database) {
+const OWN_ENTRIES = [entryName(true), entryName(false)];
+
+function candidatesOf(db: Database, entries: Record<string, unknown>) {
+  const servers = listServers(db);
+  return Object.entries(entries)
+    .filter(([name]) => !OWN_ENTRIES.includes(name))
+    .map(([name, config]) => against(importable(name, config), servers, (id) => launchFor(db, id)));
+}
+
+export function registerClientHandlers(gateway: Gateway, db: Database, add: (input: NewCustomServer) => unknown) {
   const written = new Set<ClientId>();
   let queue: Promise<unknown> = Promise.resolve();
 
@@ -70,8 +81,8 @@ export function registerClientHandlers(gateway: Gateway, db: Database) {
     } satisfies ClientState;
   }
 
-  async function write(client: ClientDefinition, context: ClientContext, connect: boolean) {
-    await apply(client, context, connect);
+  async function write(client: ClientDefinition, context: ClientContext, connect: boolean, remove?: string[]) {
+    await apply(client, context, connect, remove);
     written.add(client.id);
   }
 
@@ -103,6 +114,59 @@ export function registerClientHandlers(gateway: Gateway, db: Database) {
     const { file, dir } = pick(clientOf(id).locate(context.env));
     return existsSync(file) ? shell.showItemInFolder(file) : open(dir);
   });
+
+  // An agent that's missing or can't be read already shows that in its row.
+  handle("clients:imports", async () => {
+    const context = contextFor(gateway);
+    const found = await Promise.all(
+      CLIENTS.map((client) =>
+        entriesOf(client, context).then(
+          (entries) => ({ client, entries }),
+          () => null
+        )
+      )
+    );
+
+    // Parsing drops each entry's input, so secret values never leave this process.
+    return found
+      .filter((read) => read !== null)
+      .map(({ client, entries }) => ({
+        id: client.id,
+        entries: candidatesOf(db, entries).map((entry) => ImportEntry.parse(entry))
+      }));
+  });
+
+  handle("clients:import", ({ entries: picks }) =>
+    serially(async () => {
+      const context = contextFor(gateway);
+      const ids = [...new Set(picks.map(({ id }) => id))];
+      const found = new Map(
+        await Promise.all(
+          ids.map(async (id) => [id, candidatesOf(db, await entriesOf(clientOf(id), context))] as const)
+        )
+      );
+
+      const plan = planImport(
+        picks.map(({ id, name }) => {
+          const entry = found.get(id)!.find((candidate) => candidate.name === name);
+          if (!entry) throw new Error(`"${name}" is no longer in ${clientOf(id).name}'s config.`);
+          return { client: clientOf(id).name, entry };
+        })
+      );
+
+      // Servers are added before any agent lets go of its copy, so a failed write never loses one.
+      try {
+        for (const input of plan.create) add(input);
+        for (const id of ids) {
+          const names = picks.filter((pick) => pick.id === id).map(({ name }) => name);
+          await write(clientOf(id), context, true, names);
+        }
+      } finally {
+        emit("clients:changed");
+      }
+      return plan.names;
+    })
+  );
 
   return {
     sync: () =>

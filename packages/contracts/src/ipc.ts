@@ -10,10 +10,10 @@ import {
 } from "./activity";
 import { AvailableUpdate, CatalogEntry, CatalogInstall, CatalogResults, CatalogSearch, CatalogUpdate } from "./catalog";
 import { LogLine, ServerCounts, ServerDetails, ServerState } from "./runtime";
+import { ClientId, ClientImports, ClientState, ImportPick } from "./clients";
 import { InstalledServer, NewCustomServer, ServerUpdate } from "./server";
 import { GatewayConnection, GatewayPort, GatewayState } from "./gateway";
 import { Appearance, AppPage, UpdateState } from "./app";
-import { ClientId, ClientState } from "./clients";
 import { Runtimes } from "./system";
 
 const ServerId = z.object({ id: z.uuid() });
@@ -61,6 +61,8 @@ export const ipc = {
   "clients:connect": { input: ClientTarget, output: ClientState },
   "clients:disconnect": { input: ClientTarget, output: ClientState },
   "clients:reveal": { input: ClientTarget.extend({ target: z.enum(["config", "backups"]) }), output: z.void() },
+  "clients:imports": { input: z.void(), output: z.array(ClientImports) },
+  "clients:import": { input: z.object({ entries: z.array(ImportPick).min(1) }), output: z.array(z.string()) },
 
   "activity:summary": { input: ActivitySummaryQuery, output: ActivitySummary },
   "activity:series": { input: ActivityScope, output: z.array(ActivityBucket) },
