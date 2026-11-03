@@ -17,7 +17,7 @@ import { connector } from "./servers/connection";
 import { createSignIn } from "./servers/signIn";
 import { launchFor } from "./servers/servers";
 import { createMainWindow } from "./windows";
-import { updateOnLaunch } from "./updater";
+import { createUpdater } from "./updater";
 import { openDatabase } from "./database";
 import { emit, handle } from "./ipc";
 import { createTray } from "./tray";
@@ -147,9 +147,13 @@ if (!app.requestSingleInstanceLock()) {
     getMainWindow();
     createTray({ show: showMainWindow, quit: () => app.quit() });
 
-    await updateOnLaunch();
+    const updater = createUpdater((state) => emit("updater:state", state));
+    handle("updater:state", () => updater.state());
+    handle("updater:install", () => updater.install());
+
     launched = true;
     showMainWindow();
+    updater.start();
 
     const autostart = listServers(db).filter((server) => server.autostart);
     for (const server of autostart) void supervisor.start(server.id);

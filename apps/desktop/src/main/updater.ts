@@ -1,16 +1,16 @@
-import { app, BrowserWindow, ipcMain, shell } from "electron";
 import electronUpdater from "electron-updater";
 import { readFileSync } from "node:fs";
+import { app, shell } from "electron";
 import { join } from "node:path";
 
-import { updaterChannels, type UpdateStatus } from "@openmcp/contracts";
+import type { UpdateState } from "@openmcp/contracts";
 
-import { createWindow } from "./windows";
+import { highlights } from "./releaseNotes";
 
 const { autoUpdater } = electronUpdater;
 
 const RELEASES_URL = "https://github.com/dnlaglr/openmcp/releases/latest";
-const CHECK_TIMEOUT_MS = 10_000;
+const CHECK_EVERY_MS = 6 * 60 * 60 * 1000;
 
 function canInstall() {
   if (process.platform !== "darwin") return true;
@@ -21,66 +21,53 @@ function canInstall() {
   return manifest.openmcp?.macSigned === true;
 }
 
-async function findUpdate() {
+export function createUpdater(onState: (state: UpdateState) => void) {
+  let state: UpdateState = { status: "idle", version: null, percent: 0, notes: [], releasedAt: null };
+
+  function set(patch: Partial<UpdateState>) {
+    state = { ...state, ...patch };
+    onState(state);
+  }
+
+  async function check() {
+    if (state.status !== "idle") return;
+
+    try {
+      const result = await autoUpdater.checkForUpdates();
+      if (!result?.isUpdateAvailable) return;
+
+      const { version, releaseNotes, releaseDate } = result.updateInfo;
+      const found = {
+        version,
+        notes: highlights(releaseNotes),
+        releasedAt: releaseDate ? new Date(releaseDate) : null
+      };
+      if (!canInstall()) return set({ ...found, status: "manual" });
+
+      set({ ...found, status: "downloading", percent: 0 });
+      await autoUpdater.downloadUpdate();
+      set({ status: "ready", percent: 100 });
+    } catch (error) {
+      console.error("Couldn't check for updates", error);
+      set({ status: "idle", percent: 0 });
+    }
+  }
+
   autoUpdater.autoDownload = false;
   autoUpdater.autoInstallOnAppQuit = false;
+  autoUpdater.on("download-progress", ({ percent }) => set({ percent: Math.round(percent) }));
 
-  try {
-    const timeout = new Promise<null>((resolve) => setTimeout(resolve, CHECK_TIMEOUT_MS, null));
-    const result = await Promise.race([autoUpdater.checkForUpdates(), timeout]);
-    return result?.isUpdateAvailable ? result.updateInfo.version : null;
-  } catch (error) {
-    console.error("Skipped the launch update check", error);
-    return null;
-  }
-}
+  return {
+    start() {
+      if (!app.isPackaged) return;
 
-function openUpdateWindow(version: string) {
-  const window = createWindow(
-    "updater",
-    { width: 320, height: 400, frame: false, resizable: false, maximizable: false, fullscreenable: false },
-    { version }
-  );
-
-  window.once("ready-to-show", () => window.show());
-  return window;
-}
-
-function waitForChoice(window: BrowserWindow) {
-  return new Promise<unknown>((resolve) => {
-    ipcMain.once(updaterChannels.choice, (_event, choice: unknown) => resolve(choice));
-    window.once("closed", () => resolve("continue"));
-  }).finally(() => ipcMain.removeAllListeners(updaterChannels.choice));
-}
-
-export async function updateOnLaunch() {
-  if (!app.isPackaged) return;
-
-  const version = await findUpdate();
-  if (!version) return;
-
-  const window = openUpdateWindow(version);
-  const send = (status: UpdateStatus) => {
-    if (!window.isDestroyed()) window.webContents.send(updaterChannels.status, status);
-  };
-
-  try {
-    if ((await waitForChoice(window)) !== "update") return;
-
-    if (!canInstall()) {
-      await shell.openExternal(RELEASES_URL);
-      return;
+      void check();
+      setInterval(() => void check(), CHECK_EVERY_MS);
+    },
+    state: () => state,
+    install() {
+      if (state.status === "ready") autoUpdater.quitAndInstall(true, true);
+      else if (state.status === "manual") void shell.openExternal(RELEASES_URL);
     }
-
-    autoUpdater.on("download-progress", ({ percent }) => send({ state: "downloading", percent }));
-    await autoUpdater.downloadUpdate();
-
-    send({ state: "installing" });
-    autoUpdater.quitAndInstall(true, true);
-    await new Promise<never>(() => {});
-  } catch (error) {
-    console.error("Skipped the launch update", error);
-  } finally {
-    if (!window.isDestroyed()) window.close();
-  }
+  };
 }

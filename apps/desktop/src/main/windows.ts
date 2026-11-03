@@ -6,7 +6,7 @@ import { frameOptions, TOOLBAR_HEIGHT, windowColors } from "./theme";
 
 const RENDERER_DIR = join(__dirname, "../renderer");
 
-type Page = "index" | "updater";
+type Page = "index";
 
 function devServerUrl() {
   return app.isPackaged ? undefined : process.env.ELECTRON_RENDERER_URL;

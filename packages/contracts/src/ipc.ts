@@ -13,8 +13,8 @@ import { LogLine, ServerCounts, ServerDetails, ServerState } from "./runtime";
 import { InstalledServer, NewCustomServer, ServerUpdate } from "./server";
 import { GatewayConnection, GatewayPort, GatewayState } from "./gateway";
 import { ClientId, ClientState } from "./clients";
+import { Appearance, UpdateState } from "./app";
 import { Runtimes } from "./system";
-import { Appearance } from "./app";
 
 const ServerId = z.object({ id: z.uuid() });
 const ClientTarget = z.object({ id: ClientId });
@@ -23,6 +23,9 @@ export const ipc = {
   "app:version": { input: z.void(), output: z.string() },
   "app:appearance": { input: z.void(), output: Appearance },
   "app:setAppearance": { input: Appearance, output: z.void() },
+
+  "updater:state": { input: z.void(), output: UpdateState },
+  "updater:install": { input: z.void(), output: z.void() },
 
   "servers:list": { input: z.void(), output: z.array(InstalledServer) },
   "servers:addCustom": { input: NewCustomServer, output: InstalledServer },
@@ -76,15 +79,12 @@ export const ipcEvents = {
   "servers:log": LogLine,
   "gateway:state": GatewayState,
   "clients:changed": z.void(),
-  "activity:changed": z.void()
+  "activity:changed": z.void(),
+  "updater:state": UpdateState
 } as const;
 
 export type IpcEvent = keyof typeof ipcEvents;
 export type IpcEventPayload<E extends IpcEvent> = z.output<(typeof ipcEvents)[E]>;
-
-export const updaterChannels = { choice: "updater:choice", status: "updater:status" } as const;
-
-export type UpdateStatus = { state: "downloading"; percent: number } | { state: "installing" };
 
 export type Api = {
   invoke: <C extends IpcChannel>(
@@ -92,9 +92,4 @@ export type Api = {
     ...input: IpcInput<C> extends void ? [] : [IpcInput<C>]
   ) => Promise<IpcOutput<C>>;
   on: <E extends IpcEvent>(event: E, callback: (payload: IpcEventPayload<E>) => void) => () => void;
-};
-
-export type UpdaterApi = {
-  choose: (choice: "update" | "continue") => void;
-  onStatus: (callback: (status: UpdateStatus) => void) => void;
 };

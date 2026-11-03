@@ -17,10 +17,7 @@ export default defineConfig({
     build: {
       outDir: resolve("dist/renderer"),
       rolldownOptions: {
-        input: {
-          index: resolve("src/renderer/index.html"),
-          updater: resolve("src/renderer/updater.html")
-        }
+        input: { index: resolve("src/renderer/index.html") }
       }
     }
   }
