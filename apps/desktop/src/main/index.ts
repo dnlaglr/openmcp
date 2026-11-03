@@ -1,4 +1,4 @@
-import { app, autoUpdater, clipboard, nativeTheme, session, shell, type BrowserWindow } from "electron";
+import { app, autoUpdater, clipboard, dialog, nativeTheme, session, shell, type BrowserWindow } from "electron";
 
 import { getServer, listServers, pruneActivity } from "@openmcp/database";
 
@@ -10,6 +10,7 @@ import { registerClientHandlers } from "./clients/handlers";
 import { registerServerHandlers } from "./servers/handlers";
 import { registerSystemHandlers } from "./system/handlers";
 import { createSupervisor } from "./servers/supervisor";
+import { createUpdater, RELEASES_URL } from "./updater";
 import { createGatewayServer } from "./gateway/server";
 import { createCatalog } from "./gateway/catalog";
 import { createGateway } from "./gateway/gateway";
@@ -18,7 +19,6 @@ import { createSignIn } from "./servers/signIn";
 import { launchFor } from "./servers/servers";
 import { createMainWindow } from "./windows";
 import { emit, handle, onEmit } from "./ipc";
-import { createUpdater } from "./updater";
 import { openDatabase } from "./database";
 import { createTray } from "./tray";
 
@@ -67,7 +67,7 @@ if (!app.requestSingleInstanceLock()) {
     quitting = true;
   });
 
-  void app.whenReady().then(async () => {
+  const startup = app.whenReady().then(async () => {
     session.defaultSession.setPermissionRequestHandler((_webContents, permission, callback) =>
       callback(ALLOWED_PERMISSIONS.has(permission))
     );
@@ -187,5 +187,12 @@ if (!app.requestSingleInstanceLock()) {
 
     const autostart = listServers(db).filter((server) => server.autostart);
     for (const server of autostart) void supervisor.start(server.id);
+  });
+
+  // A windowless instance would keep the single-instance lock, so every relaunch would silently do nothing.
+  void startup.catch((error: unknown) => {
+    const detail = error instanceof Error ? (error.stack ?? error.message) : String(error);
+    dialog.showErrorBox("OpenMCP couldn't start", `${detail}\n\nInstall the latest version from ${RELEASES_URL}`);
+    app.exit(1);
   });
 }

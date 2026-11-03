@@ -9,7 +9,7 @@ import { highlights } from "./releaseNotes";
 
 const { autoUpdater } = electronUpdater;
 
-const RELEASES_URL = "https://github.com/dnlaglr/openmcp/releases/latest";
+export const RELEASES_URL = "https://github.com/dnlaglr/openmcp/releases/latest";
 const CHECK_EVERY_MS = 6 * 60 * 60 * 1000;
 
 function canInstall() {
