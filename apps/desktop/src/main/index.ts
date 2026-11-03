@@ -1,8 +1,9 @@
-import { app, autoUpdater, session, shell, type BrowserWindow } from "electron";
+import { app, autoUpdater, nativeTheme, session, shell, type BrowserWindow } from "electron";
 
 import { getServer, listServers, pruneActivity } from "@openmcp/database";
 
 import { registerActivityHandlers } from "./activity/handlers";
+import { loadAppearance, saveAppearance } from "./appearance";
 import { registerGatewayHandlers } from "./gateway/handlers";
 import { registerCatalogHandlers } from "./catalog/handlers";
 import { registerClientHandlers } from "./clients/handlers";
@@ -73,6 +74,9 @@ if (!app.requestSingleInstanceLock()) {
 
     const db = openDatabase();
     app.on("will-quit", () => db.$client.close());
+    loadAppearance(db, nativeTheme);
+    handle("app:appearance", () => nativeTheme.themeSource);
+    handle("app:setAppearance", (appearance) => saveAppearance(db, nativeTheme, appearance));
 
     const supervisor = createSupervisor({
       connect: connector(app.getVersion()),

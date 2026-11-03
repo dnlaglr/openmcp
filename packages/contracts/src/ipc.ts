@@ -14,12 +14,15 @@ import { InstalledServer, NewCustomServer, ServerUpdate } from "./server";
 import { GatewayConnection, GatewayPort, GatewayState } from "./gateway";
 import { ClientId, ClientState } from "./clients";
 import { Runtimes } from "./system";
+import { Appearance } from "./app";
 
 const ServerId = z.object({ id: z.uuid() });
 const ClientTarget = z.object({ id: ClientId });
 
 export const ipc = {
   "app:version": { input: z.void(), output: z.string() },
+  "app:appearance": { input: z.void(), output: Appearance },
+  "app:setAppearance": { input: Appearance, output: z.void() },
 
   "servers:list": { input: z.void(), output: z.array(InstalledServer) },
   "servers:addCustom": { input: NewCustomServer, output: InstalledServer },
