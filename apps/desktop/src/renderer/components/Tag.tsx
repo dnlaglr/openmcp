@@ -5,7 +5,8 @@ const tones = {
   neutral: "bg-tint-2 text-muted-foreground",
   accent: "bg-accent text-accent-foreground",
   warn: "bg-status-attention/20 text-warn-ink",
-  danger: "bg-destructive/12 text-destructive"
+  danger: "bg-destructive/12 text-destructive",
+  ok: "bg-status-running/15 text-ok-ink"
 };
 
 type TagProps = { tone?: keyof typeof tones; mono?: boolean; children: ReactNode; className?: string };

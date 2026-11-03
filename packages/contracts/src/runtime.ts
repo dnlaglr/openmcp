@@ -1,4 +1,10 @@
-import { ImplementationSchema, PromptSchema, ResourceSchema, ToolSchema } from "@modelcontextprotocol/core";
+import {
+  CallToolResultSchema,
+  ImplementationSchema,
+  PromptSchema,
+  ResourceSchema,
+  ToolSchema
+} from "@modelcontextprotocol/core";
 import { z } from "zod";
 
 export const MAX_LOG_LINES = 500;
@@ -40,3 +46,8 @@ export const ServerDetails = z.object({
   resources: z.array(ResourceSchema).nullable()
 });
 export type ServerDetails = z.infer<typeof ServerDetails>;
+
+export const TOOL_CALL_STOPPED = "The server stopped before the tool finished.";
+
+export const ToolRun = z.object({ result: CallToolResultSchema, durationMs: z.number() });
+export type ToolRun = z.infer<typeof ToolRun>;

@@ -1,6 +1,6 @@
 import { Fragment, useState, type ReactNode } from "react";
 import { Collapsible } from "@base-ui/react/collapsible";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, Play } from "lucide-react";
 
 import type { InstalledServer, ServerState, Tool } from "@openmcp/contracts";
 
@@ -13,6 +13,7 @@ import { toolParameters } from "./serverDetails";
 import { useServerDetails } from "./useServers";
 import { primaryAction } from "./serverStatus";
 import { Button } from "@/components/Button";
+import { ToolRunner } from "./ToolRunner";
 import { Tag } from "@/components/Tag";
 
 type ToolsTabProps = { server: InstalledServer; state: ServerState; waiting: boolean; onPrimary: () => void };
@@ -76,7 +77,7 @@ function Capabilities({ server, state }: Pick<ToolsTabProps, "server" | "state">
       />
       <div className="rounded-[9px] ring-1 ring-border ring-inset">
         {shown.map((tool) => (
-          <ToolRow key={tool.name} prefix={server.name} tool={tool} calls={calls.get(tool.name)} />
+          <ToolRow key={tool.name} server={server} tool={tool} calls={calls.get(tool.name)} />
         ))}
         {shown.length === 0 && (
           <p className="p-6 text-center text-muted-foreground">
@@ -124,8 +125,9 @@ function Entry({ name, detail }: { name: string; detail?: ReactNode }) {
   );
 }
 
-function ToolRow({ prefix, tool, calls }: { prefix: string; tool: Tool; calls?: number }) {
+function ToolRow({ server, tool, calls }: { server: InstalledServer; tool: Tool; calls?: number }) {
   const parameters = toolParameters(tool.inputSchema);
+  const [trying, setTrying] = useState(false);
 
   return (
     <Collapsible.Root className="[&+&]:border-t">
@@ -134,7 +136,7 @@ function ToolRow({ prefix, tool, calls }: { prefix: string; tool: Tool; calls?: 
         <span className="flex min-w-0 flex-1 flex-col">
           <b className="truncate font-mono text-xs font-semibold">{tool.name}</b>
           <span className="truncate font-mono text-[11px] text-muted-foreground">
-            {prefix}__{tool.name}
+            {server.name}__{tool.name}
           </span>
         </span>
         {tool.annotations?.readOnlyHint && <Tag>Read-only</Tag>}
@@ -150,19 +152,35 @@ function ToolRow({ prefix, tool, calls }: { prefix: string; tool: Tool; calls?: 
           ) : (
             <p className="text-muted-foreground italic">No description.</p>
           )}
-          {parameters.length === 0 ? (
-            <p className="text-xs text-muted-foreground">Takes no parameters.</p>
+          {trying ? (
+            <ToolRunner
+              serverId={server.id}
+              serverName={server.name}
+              tool={tool}
+              fields={parameters}
+              onClose={() => setTrying(false)}
+            />
           ) : (
-            <dl className="grid grid-cols-[auto_auto_auto_1fr] items-baseline gap-x-3 gap-y-1 text-xs">
-              {parameters.map((field) => (
-                <Fragment key={field.name}>
-                  <dt className="font-mono font-semibold">{field.name}</dt>
-                  <dd className="font-mono text-muted-foreground">{field.type}</dd>
-                  <dd className="text-muted-foreground">{field.required ? "required" : "optional"}</dd>
-                  <dd className="text-muted-foreground">{field.description}</dd>
-                </Fragment>
-              ))}
-            </dl>
+            <>
+              {parameters.length === 0 ? (
+                <p className="text-xs text-muted-foreground">Takes no parameters.</p>
+              ) : (
+                <dl className="grid grid-cols-[auto_auto_auto_1fr] items-baseline gap-x-3 gap-y-1 text-xs">
+                  {parameters.map((field) => (
+                    <Fragment key={field.name}>
+                      <dt className="font-mono font-semibold">{field.name}</dt>
+                      <dd className="font-mono text-muted-foreground">{field.type}</dd>
+                      <dd className="text-muted-foreground">{field.required ? "required" : "optional"}</dd>
+                      <dd className="text-muted-foreground">{field.description}</dd>
+                    </Fragment>
+                  ))}
+                </dl>
+              )}
+              <Button size="sm" className="self-start" aria-label={`Try ${tool.name}`} onClick={() => setTrying(true)}>
+                <Play />
+                Try it
+              </Button>
+            </>
           )}
         </div>
       </Collapsible.Panel>

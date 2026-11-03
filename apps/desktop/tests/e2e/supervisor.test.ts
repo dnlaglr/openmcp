@@ -79,7 +79,7 @@ test("describes its tools across every page, its resources, and no prompts", asy
     instructions: "Use echo to test the connection.",
     prompts: null
   });
-  expect(details.tools?.map((tool) => tool.name)).toEqual(["echo", "from_env"]);
+  expect(details.tools?.map((tool) => tool.name)).toEqual(["echo", "fail", "from_env"]);
   expect(details.resources?.map((resource) => resource.uri)).toEqual(["fixture://readme"]);
 });
 

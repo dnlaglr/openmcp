@@ -76,7 +76,12 @@ test.each(["legacy", "modern"] as const)(
     const client = await connect(await gateway(), token, era);
 
     await vi.waitFor(
-      async () => expect((await client.listTools()).tools.map((tool) => tool.name)).toEqual(["one__echo", "one__add"]),
+      async () =>
+        expect((await client.listTools()).tools.map((tool) => tool.name)).toEqual([
+          "one__echo",
+          "one__fail",
+          "one__add"
+        ]),
       { timeout: 5_000 }
     );
     const result = await client.callTool({ name: "one__echo", arguments: { message: "hello" } });

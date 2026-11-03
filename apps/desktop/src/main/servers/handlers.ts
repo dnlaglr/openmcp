@@ -1,5 +1,5 @@
 import { listServers, setAutostart, type Database } from "@openmcp/database";
-import type { NewCustomServer } from "@openmcp/contracts";
+import { TOOL_CALL_STOPPED, type NewCustomServer } from "@openmcp/contracts";
 
 import { addCustomServer, deleteServer, editServer } from "./servers";
 import type { Catalog } from "../gateway/catalog";
@@ -68,6 +68,30 @@ export function registerServerHandlers(
 
     return describeServer(client);
   });
+
+  // Calls straight to the server, not through the gateway, so they stay out of the agents' activity log.
+  const calls = new Map<string, AbortController>();
+
+  handle("servers:callTool", async ({ id, name, arguments: args, callId }) => {
+    const client = supervisor.client(id);
+    if (!client) throw new Error("Start the server to run its tools.");
+
+    const controller = new AbortController();
+    calls.set(callId, controller);
+    const started = performance.now();
+
+    try {
+      const result = await client.callTool({ name, arguments: args }, { signal: controller.signal });
+      return { result, durationMs: Math.round(performance.now() - started) };
+    } catch (error) {
+      if (controller.signal.aborted) throw new Error("Cancelled.", { cause: error });
+      if (supervisor.client(id) !== client) throw new Error(TOOL_CALL_STOPPED, { cause: error });
+      throw error;
+    } finally {
+      calls.delete(callId);
+    }
+  });
+  handle("servers:cancelToolCall", ({ callId }) => calls.get(callId)?.abort());
 
   return { add };
 }

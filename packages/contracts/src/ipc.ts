@@ -9,7 +9,7 @@ import {
   ActivitySummaryQuery
 } from "./activity";
 import { AvailableUpdate, CatalogEntry, CatalogInstall, CatalogResults, CatalogSearch, CatalogUpdate } from "./catalog";
-import { LogLine, ServerCounts, ServerDetails, ServerState } from "./runtime";
+import { LogLine, ServerCounts, ServerDetails, ServerState, ToolRun } from "./runtime";
 import { ClientId, ClientImports, ClientState, ImportPick } from "./clients";
 import { InstalledServer, NewCustomServer, ServerUpdate } from "./server";
 import { GatewayConnection, GatewayPort, GatewayState } from "./gateway";
@@ -40,6 +40,11 @@ export const ipc = {
   "servers:counts": { input: z.void(), output: z.array(ServerCounts) },
   "servers:logs": { input: ServerId, output: z.array(LogLine) },
   "servers:details": { input: ServerId, output: ServerDetails },
+  "servers:callTool": {
+    input: ServerId.extend({ name: z.string(), arguments: z.record(z.string(), z.unknown()), callId: z.uuid() }),
+    output: ToolRun
+  },
+  "servers:cancelToolCall": { input: z.object({ callId: z.uuid() }), output: z.void() },
   "servers:signIn": { input: ServerId, output: z.void() },
   "servers:signOut": { input: ServerId, output: z.void() },
   "servers:signedIn": { input: z.void(), output: z.array(z.uuid()) },

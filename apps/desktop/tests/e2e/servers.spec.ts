@@ -92,6 +92,40 @@ test("starts a server, shows what it exposes and its logs, then stops it", () =>
     await app.close();
   }));
 
+test("runs a tool from the inspector and shows its result, or its error as an error", () =>
+  withDataDir(async (dataDir) => {
+    const app = await launch(dataDir);
+    const page = await app.firstWindow();
+
+    const sheet = await addLocal(page, { name: "fixture", command: "node", args: fixture });
+    await sheet.getByRole("button", { name: "Add server" }).click();
+    await expect(row(page, "fixture")).toContainText("Running");
+
+    await openDetails(page, "fixture");
+    const inspector = details(page, "fixture");
+    await inspector.getByRole("tab", { name: /Tools/ }).click();
+
+    await inspector.getByText("add", { exact: true }).click();
+    await inspector.getByRole("button", { name: "Try add" }).click();
+    await inspector.getByRole("button", { name: "Run add" }).click();
+    await expect(inspector.getByText("Enter a value.")).toHaveCount(2);
+
+    await inspector.getByRole("spinbutton", { name: "a", exact: true }).fill("2");
+    await inspector.getByRole("spinbutton", { name: "b", exact: true }).fill("3");
+    await inspector.getByRole("button", { name: "Run add" }).click();
+    const result = inspector.getByRole("region", { name: "add result" });
+    await expect(result).toContainText("OK");
+    await expect(result).toContainText('"sum": 5');
+
+    await inspector.getByText("fail", { exact: true }).click();
+    await inspector.getByRole("button", { name: "Try fail" }).click();
+    await inspector.getByRole("button", { name: "Run fail" }).click();
+    const error = inspector.getByRole("region", { name: "fail error" });
+    await expect(error).toContainText("Error");
+    await expect(error).toContainText("Failed: on purpose");
+    await app.close();
+  }));
+
 test("edits a running server, then restarts it under its new name with its stored secret kept", () =>
   withDataDir(async (dataDir) => {
     const app = await launch(dataDir);

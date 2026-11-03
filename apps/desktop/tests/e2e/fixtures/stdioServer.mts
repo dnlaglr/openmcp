@@ -3,7 +3,7 @@ import { createInterface } from "node:readline";
 type Message = {
   id?: number | string;
   method?: string;
-  params?: { protocolVersion?: string; cursor?: string; name?: string; arguments?: { message?: string } };
+  params?: { protocolVersion?: string; cursor?: string; name?: string; arguments?: Record<string, unknown> };
 };
 
 const write = (message: object) => process.stdout.write(`${JSON.stringify({ jsonrpc: "2.0", ...message })}\n`);
@@ -19,6 +19,29 @@ const echo = {
   annotations: { readOnlyHint: true }
 };
 
+const fail = {
+  name: "fail",
+  description: "Always fails.",
+  inputSchema: { type: "object", properties: { reason: { type: "string" } } }
+};
+
+const add = {
+  name: process.env.FIXTURE_TOOL ?? "add",
+  description: "Adds two numbers.",
+  inputSchema: { type: "object", properties: { a: { type: "number" }, b: { type: "number" } }, required: ["a", "b"] }
+};
+
+function call(params: Message["params"]) {
+  const args = params?.arguments ?? {};
+  if (params?.name === "echo") return { content: [{ type: "text", text: args.message ?? "" }] };
+  if (params?.name === "fail") {
+    return { content: [{ type: "text", text: `Failed: ${String(args.reason ?? "on purpose")}` }], isError: true };
+  }
+
+  const sum = Number(args.a) + Number(args.b);
+  return { content: [{ type: "text", text: String(sum) }], structuredContent: { sum } };
+}
+
 const handlers: Record<string, (params: Message["params"]) => unknown> = {
   initialize: (params) => ({
     protocolVersion: params?.protocolVersion,
@@ -26,11 +49,8 @@ const handlers: Record<string, (params: Message["params"]) => unknown> = {
     serverInfo: { name: "fixture", version: "1.0.0" },
     instructions: "Use echo to test the connection."
   }),
-  "tools/list": (params) =>
-    params?.cursor
-      ? { tools: [{ name: process.env.FIXTURE_TOOL ?? "add", inputSchema: { type: "object" } }] }
-      : { tools: [echo], nextCursor: "page-2" },
-  "tools/call": (params) => ({ content: [{ type: "text", text: params?.arguments?.message ?? "" }] }),
+  "tools/list": (params) => (params?.cursor ? { tools: [add] } : { tools: [echo, fail], nextCursor: "page-2" }),
+  "tools/call": call,
   "resources/list": () => ({ resources: [{ uri: "fixture://readme", name: "readme", mimeType: "text/plain" }] }),
   ping: () => ({})
 };

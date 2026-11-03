@@ -103,7 +103,8 @@ test.each(["legacy", "modern"] as const)("lists and calls a running server's too
   const client = await connect(url, era);
 
   await vi.waitFor(
-    async () => expect((await client.listTools()).tools.map((tool) => tool.name)).toEqual(["one__echo", "one__add"]),
+    async () =>
+      expect((await client.listTools()).tools.map((tool) => tool.name)).toEqual(["one__echo", "one__fail", "one__add"]),
     { timeout: 5_000 }
   );
   const result = await client.callTool({ name: "one__echo", arguments: { message: "hello" } });
@@ -122,9 +123,13 @@ test("tells agents of both eras when another server starts", async () => {
   await start("two");
 
   for (const changes of [legacy, modern]) {
-    await vi.waitFor(() => expect(changes.at(-1)).toEqual(["one__echo", "one__add", "two__echo", "two__add"]), {
-      timeout: 5_000
-    });
+    await vi.waitFor(
+      () =>
+        expect(changes.at(-1)).toEqual(["one__echo", "one__fail", "one__add", "two__echo", "two__fail", "two__add"]),
+      {
+        timeout: 5_000
+      }
+    );
   }
 });
 
