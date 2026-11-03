@@ -6,6 +6,7 @@ import { useServers, useServerStates } from "@/features/servers/useServers";
 import { useGatewayState } from "@/features/settings/useGateway";
 import { useAgentCounts } from "@/features/agents/useClients";
 import type { Navigate } from "@/lib/navigation";
+import { UpdateItem } from "./UpdateItem";
 import { StatusLed } from "./StatusLed";
 import { Tooltip } from "./Tooltip";
 import { toast } from "@/lib/toast";
@@ -76,6 +77,7 @@ export function StatusBar({ navigate }: { navigate: Navigate }) {
       {separator}
       <span className={item}>{agentsLine}</span>
       <span className="ml-auto" />
+      <UpdateItem className={item} />
       {separator}
       {version && <span className={`${item} font-mono`}>v{version}</span>}
     </footer>

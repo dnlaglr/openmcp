@@ -1,4 +1,12 @@
-import { addTransitionType, startTransition, useCallback, useState, ViewTransition, type ComponentType } from "react";
+import {
+  addTransitionType,
+  startTransition,
+  useCallback,
+  useEffect,
+  useState,
+  ViewTransition,
+  type ComponentType
+} from "react";
 
 import type { Navigate, NavigateParams, Page, PageProps } from "@/lib/navigation";
 import { ActivityPage } from "@/features/activity/ActivityPage";
@@ -8,6 +16,7 @@ import { ServersPage } from "@/features/servers/ServersPage";
 import { AgentsPage } from "@/features/agents/AgentsPage";
 import { StatusBar } from "@/components/StatusBar";
 import { Sidebar } from "@/components/Sidebar";
+import { Logo } from "@/components/Logo";
 
 const pages: Record<Page, ComponentType<PageProps>> = {
   servers: ServersPage,
@@ -30,6 +39,7 @@ export function App() {
       }),
     []
   );
+  useEffect(() => window.api.on("app:navigate", ({ page, serverId }) => navigate(page, { serverId })), [navigate]);
   const Current = pages[route.page];
 
   return (
@@ -41,6 +51,16 @@ export function App() {
         </main>
       </ViewTransition>
       <StatusBar navigate={navigate} />
+      <div
+        role="status"
+        className="fixed inset-0 z-100 hidden flex-col items-center justify-center gap-2 bg-background/70 backdrop-blur-md in-data-restarting:flex in-data-restarting:animate-[fade_var(--d3)_var(--ease-out)]"
+      >
+        <span className="bevel-primary mb-2 grid size-14 animate-pulse place-items-center rounded-2xl">
+          <Logo className="size-7" />
+        </span>
+        <b className="font-semibold">Restarting to update…</b>
+        <span className="text-xs text-muted-foreground">Your servers come back on their own.</span>
+      </div>
     </div>
   );
 }
